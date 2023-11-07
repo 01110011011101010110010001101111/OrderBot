@@ -23,6 +23,9 @@ from manipulation import ConfigureParser, running_as_notebook
 import pydot
 from IPython.display import display, Image, SVG
 
+## override
+running_as_notebook = True
+
 # Start the visualizer.
 meshcat = StartMeshcat()
 
