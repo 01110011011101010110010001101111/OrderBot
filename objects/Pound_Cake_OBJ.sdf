@@ -22,6 +22,9 @@
             <scale>0.01 0.01 0.01</scale>
           </mesh>
         </geometry>
+        <material>
+          <diffuse>0.61 0.51 0.53 1.0</diffuse>
+        </material>
       </visual>
       <collision name='collision'>
         <pose>0.0 0.0 0.0 0 0 0</pose>

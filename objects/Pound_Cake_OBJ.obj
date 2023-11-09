@@ -1,6 +1,5 @@
 # This file uses centimeters as units for non-parametric coordinates.
 
-mtllib Pound Cake.mtl
 g default
 v 0.000000 -0.000000 5.310006
 v -6.139252 -0.000000 5.222967
