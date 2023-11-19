@@ -65,7 +65,9 @@ def make_internal_model():
     plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.001)
     parser = Parser(plant)
     ConfigureParser(parser)
-    parser.AddModelsFromUrl("package://manipulation/clutter_planning.dmd.yaml")
+    # TODO: IMPORT CUSTOM VERSION INSTEAD!!!
+    # parser.AddModelsFromUrl("package://manipulation/clutter_planning.dmd.yaml")
+    parser.AddModels(f"{full_path}tmp.dmd.yaml")
     plant.Finalize()
     return builder.Build()
 
@@ -341,6 +343,7 @@ class Planner(LeafSystem):
             ]
         }
 
+        # TODO: CAN MODIFY TO WORK WITH DIFFERENT BINS WITH DIFFERENT THINGS
         cost = np.inf
         for i in range(5):
             if mode == PlannerState.PICKING_FROM_Y_BIN:
@@ -508,11 +511,6 @@ def clutter_clearing_demo():
 directives:
 """
     for i in range(10 if running_as_notebook else 2):
-        object_num = rng.integers(0, len(ycb))
-        if "cracker_box" in ycb[object_num]:
-            # skip it. it's just too big!
-            continue
-
         # porting over previous work
         ranges = {"x": 0, "y": -0.6, "z": 0.2}
         name = "foam_chicken"
