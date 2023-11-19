@@ -79,13 +79,6 @@ directives:
     default_free_body_pose:
         base_link:
             translation: [0, -0.6, 0.2]
-- add_model:
-    name: your_model
-    file: file://{your_model_filename}
-    default_free_body_pose:
-        Pound_Cake_OBJ: # Change here!
-            translation: [0, -0.6, 0.2]
-            rotation: !Rpy {{ deg: [42, 33, 18] }}
 """
 
 def add_random_obj(ranges, name, cnt):
@@ -114,8 +107,8 @@ def add_custom_random_obj(ranges, name, cnt):
             rotation: !Rpy {{ deg: [{np.random.randint(0, 90)}, {np.random.randint(0, 90)}, {np.random.randint(0, 90)}] }}
 """
    
-add_random_obj({"x": 0, "y": -0.6, "z": 0.2}, "foam_chicken", 100)
-add_custom_random_obj({"x": 0.2, "y": -0.6, "z": 0.2}, "Pound_Cake_OBJ", 25)
+add_random_obj({"x": 0, "y": -0.6, "z": 0.2}, "foam_chicken", 10)
+# add_custom_random_obj({"x": 0.2, "y": -0.6, "z": 0.2}, "Pound_Cake_OBJ", 2)
 
 scenario_data += f"""
 model_drivers:
@@ -201,4 +194,4 @@ def teleop_3d():
 
 teleop_3d()
 
-input("ahhhhhhhhhh ")
+input("Simulation Running at http://localhost:7000 — Press Any Key to Terminate ")
