@@ -1,0 +1,48 @@
+<?xml version='1.0'?>
+<sdf xmlns:drake="http://drake.mit.edu" version="1.8">
+  <model name='Pound_Cake_OBJ'>
+    <link name='Pound_Cake_OBJ'>
+      <inertial>
+        <pose>-1.2772565775820334e-16 1.2705654999999991 -0.8515260810138184 0 0 0</pose>
+        <mass>4.531366851</mass>
+        <inertia>
+          <ixx>590.103132539</ixx>
+          <ixy>0.000014858837123673164e-10</ixy>
+          <ixz>-0.00042564316036138084e-10</ixz>
+          <iyy>130.38836689</iyy>
+          <iyz>0.0005146844410295903e-10</iyz>
+          <izz>840.449553087</izz>
+        </inertia>
+      </inertial>
+      <visual name='visual'>
+        <pose>0.0 0.0 0.0 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>Pound_Cake_OBJ.obj</uri>
+            <scale>0.01 0.01 0.01</scale>
+          </mesh>
+        </geometry>
+        <material>
+          <diffuse>0.61 0.51 0.53 1.0</diffuse>
+        </material>
+      </visual>
+      <collision name='collision'>
+        <pose>0.0 0.0 0.0 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>Pound_Cake_OBJ.obj</uri>
+            <scale>0.01 0.01 0.01</scale>
+          </mesh>
+        </geometry>
+        <!-- The proximity properties immediately below enable the hydroelastic
+             contact model for this body. To use point contact instead, delete
+             or comment out the <drake:rigid_hydroelastic> element. -->
+        <drake:proximity_properties>
+          <drake:mu_dynamic>0.5</drake:mu_dynamic>
+          <drake:mu_static>0.5</drake:mu_static>
+          <drake:rigid_hydroelastic/>
+        </drake:proximity_properties>
+      </collision>
+    </link>
+  </model>
+</sdf>

@@ -515,7 +515,9 @@ def clutter_clearing_demo():
     model_directives = """
 directives:
 """
-    for i in range(10 if running_as_notebook else 2):
+    '''
+    NUM_CHICKEN = 10
+    for i in range(NUM_CHICKEN):
         # porting over previous work
         ranges = {"x": 0, "y": -0.6, "z": 0.2}
         name = "foam_chicken"
@@ -528,6 +530,33 @@ directives:
         base_link:
             translation: [{ranges['x'] + np.random.randint(-10, 10)/50}, {ranges['y'] + np.random.randint(-10, 10)/50}, {ranges['z'] + np.random.randint(10)/10}]
 """
+    '''
+
+    NUM_BREAD = 5
+    for num in range(NUM_BREAD):
+        ranges = {"x": 0.2, "y": -0.6, "z": 0.2}
+        name = "Pound_Cake_OBJ"
+        model_directives += f"""
+- add_model:
+    name: {name}_{num}
+    file: file://{full_path}{name}.sdf
+    default_free_body_pose:
+        base_link:
+            translation: [{ranges['x'] + np.random.randint(-10, 10)/50}, {ranges['y'] + np.random.randint(-10, 10)/50}, {ranges['z'] + np.random.randint(10)/10}]
+"""
+    '''
+        model_directives += f"""
+- add_model:
+    name: {name}_{num}
+    file: file://{full_path}{name}.sdf
+    default_free_body_pose:
+        {name}: # Change here!
+            translation: [{0.5 + np.random.randint(-10, 10)/50}, {-0.6 + np.random.randint(-10, 10)/50}, {0.01}] 
+            rotation: !Rpy {{ deg: [{np.random.randint(0, 90)}, {np.random.randint(0, 90)}, {np.random.randint(0, 90)}] }}
+"""
+    '''
+
+
     scenario = add_directives(scenario, data=model_directives)
 
     station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))

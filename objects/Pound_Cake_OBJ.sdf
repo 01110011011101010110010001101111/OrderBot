@@ -1,46 +1,40 @@
-<?xml version='1.0'?>
-<sdf xmlns:drake="http://drake.mit.edu" version="1.8">
-  <model name='Pound_Cake_OBJ'>
-    <link name='Pound_Cake_OBJ'>
+<?xml version="1.0"?>
+<sdf version="1.7">
+  <model name="Pound_Cake_OBJ">
+    <link name="base_link">
       <inertial>
-        <pose>-1.2772565775820334e-16 1.2705654999999991 -0.8515260810138184 0 0 0</pose>
-        <mass>4.531366851</mass>
+        <pose>0 0 0.025 0 0 0 </pose>
+        <mass>0.028</mass>
         <inertia>
-          <ixx>590.103132539</ixx>
-          <ixy>0.000014858837123673164e-10</ixy>
-          <ixz>-0.00042564316036138084e-10</ixz>
-          <iyy>130.38836689</iyy>
-          <iyz>0.0005146844410295903e-10</iyz>
-          <izz>840.449553087</izz>
+          <ixx>1.17e-5</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1.9e-5</iyy>
+          <iyz>0</iyz>
+          <izz>1.9e-5</izz>
         </inertia>
       </inertial>
-      <visual name='visual'>
-        <pose>0.0 0.0 0.0 0 0 0</pose>
+      <visual name="base_link">
+        <pose>0 0 0.025 0 0 0</pose>
         <geometry>
-          <mesh>
-            <uri>Pound_Cake_OBJ.obj</uri>
-            <scale>0.01 0.01 0.01</scale>
-          </mesh>
+          <box>
+            <size>0.085 0.06 0.02</size>
+          </box>
         </geometry>
         <material>
           <diffuse>0.61 0.51 0.53 1.0</diffuse>
         </material>
       </visual>
-      <collision name='collision'>
-        <pose>0.0 0.0 0.0 0 0 0</pose>
+      <collision name="box_collision">
+        <pose>0 0 0.025 0 0 0</pose>
         <geometry>
-          <mesh>
-            <uri>Pound_Cake_OBJ.obj</uri>
-            <scale>0.01 0.01 0.01</scale>
-          </mesh>
+          <box>
+            <size>0.084 0.059 0.019</size>
+          </box>
         </geometry>
-        <!-- The proximity properties immediately below enable the hydroelastic
-             contact model for this body. To use point contact instead, delete
-             or comment out the <drake:rigid_hydroelastic> element. -->
         <drake:proximity_properties>
-          <drake:mu_dynamic>0.5</drake:mu_dynamic>
-          <drake:mu_static>0.5</drake:mu_static>
-          <drake:rigid_hydroelastic/>
+          <drake:compliant_hydroelastic/>
+          <drake:hydroelastic_modulus>1.0e5</drake:hydroelastic_modulus>
         </drake:proximity_properties>
       </collision>
     </link>
