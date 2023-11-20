@@ -68,6 +68,7 @@ def make_internal_model():
     # TODO: IMPORT CUSTOM VERSION INSTEAD!!!
     # parser.AddModelsFromUrl("package://manipulation/clutter_planning.dmd.yaml")
     parser.AddModels(f"{full_path}tmp.dmd.yaml")
+    print(parser)
     plant.Finalize()
     return builder.Build()
 
@@ -155,6 +156,7 @@ class PlannerState(Enum):
     PICKING_FROM_X_BIN = 2
     PICKING_FROM_Y_BIN = 3
     GO_HOME = 4
+    PICKING_FROM_Z_BIN = 5
 
 
 class Planner(LeafSystem):
@@ -371,6 +373,9 @@ class Planner(LeafSystem):
 
         # TODO(russt): The randomness should come in through a random input
         # port.
+
+        # TODO: CAN BE CHANGED TO X AND Y BINS
+
         if mode == PlannerState.PICKING_FROM_X_BIN:
             # Place in Y bin:
             X_G["place"] = RigidTransform(
@@ -504,7 +509,7 @@ def clutter_clearing_demo():
     builder = DiagramBuilder()
 
     scenario = load_scenario(
-        filename=FindResource("models/clutter.scenarios.yaml"),
+        filename=FindResource(f"{full_path}/clutter.scenarios.yaml"),
         scenario_name="Clutter",
     )
     model_directives = """
@@ -531,6 +536,7 @@ directives:
     )
     plant = station.GetSubsystemByName("plant")
 
+    ### CREATE GRASP SELECTOR FOR EACH PORT
     y_bin_grasp_selector = builder.AddSystem(
         GraspSelector(
             plant,
