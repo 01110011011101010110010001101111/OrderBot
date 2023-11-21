@@ -92,3 +92,52 @@ directives:
 - add_weld:
     parent: camera5_origin
     child: camera5::base
+
+
+
+
+
+- add_frame:
+    name: camera6_origin
+    X_PF:
+        base_frame: world
+        rotation: !Rpy { deg: [-130.0, 0, 0.0]}
+        translation: [.5, -.6, .4]
+
+- add_model:
+    name: camera6
+    file: package://manipulation/camera_box.sdf
+
+- add_weld:
+    parent: camera6_origin
+    child: camera6::base
+
+- add_frame:
+    name: camera7_origin
+    X_PF:
+        base_frame: world
+        rotation: !Rpy { deg: [-150., 0, 90.0]}
+        translation: [.7, -0.25, .5]
+
+- add_model:
+    name: camera7
+    file: package://manipulation/camera_box.sdf
+
+- add_weld:
+    parent: camera7_origin
+    child: camera7::base
+
+- add_frame:
+    name: camera8_origin
+    X_PF:
+        base_frame: world
+        rotation: !Rpy { deg: [-140., 0, -150.0]}
+        translation: [.25, .05, .45]
+
+- add_model:
+    name: camera8
+    file: package://manipulation/camera_box.sdf
+
+- add_weld:
+    parent: camera8_origin
+    child: camera8::base

@@ -68,7 +68,6 @@ def make_internal_model():
     # TODO: IMPORT CUSTOM VERSION INSTEAD!!!
     # parser.AddModelsFromUrl("package://manipulation/clutter_planning.dmd.yaml")
     parser.AddModels(f"{full_path}tmp.dmd.yaml")
-    print(parser)
     plant.Finalize()
     return builder.Build()
 
@@ -171,6 +170,9 @@ class Planner(LeafSystem):
         ).get_index()
         self._y_bin_grasp_index = self.DeclareAbstractInputPort(
             "y_bin_grasp", AbstractValue.Make((np.inf, RigidTransform()))
+        ).get_index()
+        self._z_bin_grasp_index = self.DeclareAbstractInputPort(
+            "z_bin_grasp", AbstractValue.Make((np.inf, RigidTransform()))
         ).get_index()
         self._wsg_state_index = self.DeclareVectorInputPort(
             "wsg_state", 2
@@ -634,6 +636,45 @@ directives:
         x_bin_grasp_selector.GetInputPort("body_poses"),
     )
 
+    ## trying to add the z bin
+
+    z_bin_grasp_selector = builder.AddSystem(
+        GraspSelector(
+            plant,
+            plant.GetModelInstanceByName("bin2"),
+            camera_body_indices=[
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera6"))[
+                    0
+                ],
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera7"))[
+                    0
+                ],
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera8"))[
+                    0
+                ],
+            ],
+        )
+    )
+    builder.Connect(
+        to_point_cloud["camera6"].get_output_port(),
+        z_bin_grasp_selector.get_input_port(0),
+    )
+    builder.Connect(
+        to_point_cloud["camera7"].get_output_port(),
+        z_bin_grasp_selector.get_input_port(1),
+    )
+    builder.Connect(
+        to_point_cloud["camera8"].get_output_port(),
+        z_bin_grasp_selector.get_input_port(2),
+    )
+    builder.Connect(
+        station.GetOutputPort("body_poses"),
+        z_bin_grasp_selector.GetInputPort("body_poses"),
+    )
+
+
+
+
     planner = builder.AddSystem(Planner(plant))
     builder.Connect(
         station.GetOutputPort("body_poses"), planner.GetInputPort("body_poses")
@@ -645,6 +686,10 @@ directives:
     builder.Connect(
         y_bin_grasp_selector.get_output_port(),
         planner.GetInputPort("y_bin_grasp"),
+    )
+    builder.Connect(
+        z_bin_grasp_selector.get_output_port(),
+        planner.GetInputPort("z_bin_grasp"),
     )
     builder.Connect(
         station.GetOutputPort("wsg.state_measured"),

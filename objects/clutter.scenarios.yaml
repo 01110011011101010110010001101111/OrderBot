@@ -42,6 +42,27 @@ Clutter: &Clutter
       X_PB:
         base_frame: camera5::base
 
+    camera6:
+      name: camera6
+      depth: True
+      X_PB:
+        base_frame: camera6::base
+
+    camera7:
+      name: camera7
+      depth: True
+      X_PB:
+        base_frame: camera7::base
+
+    camera8:
+      name: camera8
+      depth: True
+      X_PB:
+        base_frame: camera8::base
+
+
+
+
   model_drivers:
       iiwa: !IiwaDriver
         hand_model_name: wsg
