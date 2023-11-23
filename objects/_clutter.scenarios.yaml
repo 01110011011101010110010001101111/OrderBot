@@ -68,29 +68,10 @@ Clutter: &Clutter
         hand_model_name: wsg
       wsg: !SchunkWsgDriver {}
 
-
 Mustard:
   <<: *Clutter
   directives:
   - add_directives:
-      file: package://manipulation/iiwa_and_wsg.dmd.yaml
-  - add_directives:
-      file: file:///Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/two_bins_w_cameras.dmd.yaml
-  - add_model:
-      name: mustard
-      file: package://manipulation/hydro/006_mustard_bottle.sdf
-      default_free_body_pose:
-          base_link_mustard:
-            # In Bin 1
-            #rotation: !Rpy { deg: [-90.0, 0.0, -90.0 ]}
-            #translation: [-0.05, -0.5, 0.09515]
-            # In Bin 2
-            translation: [0.55, 0.1, 0]
-            rotation: !Rpy { deg: [0, 0, 45]}
-
-Objects:
-    <<: *Clutter
-   - add_directives:
       file: package://manipulation/iiwa_and_wsg.dmd.yaml
   - add_directives:
       file: file:///Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/two_bins_w_cameras.dmd.yaml

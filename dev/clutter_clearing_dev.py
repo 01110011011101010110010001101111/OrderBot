@@ -363,7 +363,8 @@ class Planner(LeafSystem):
                 if np.isinf(cost):
                     mode = PlannerState.PICKING_FROM_Y_BIN
                 else:
-                    mode = PlannerState.PICKING_FROM_X_BIN
+                    # NOTE: SETTING TO Z BIN FOR NOW
+                    mode = PlannerState.PICKING_FROM_Z_BIN
 
             if not np.isinf(cost):
                 break
@@ -376,20 +377,29 @@ class Planner(LeafSystem):
         # TODO(russt): The randomness should come in through a random input
         # port.
 
-        # TODO: CAN BE CHANGED TO X AND Y BINS
-
+        # TODO: WE WANT EVERYTHING TO GO INTO ONE BIN (THE "TRAY") 
         if mode == PlannerState.PICKING_FROM_X_BIN:
             # Place in Y bin:
             X_G["place"] = RigidTransform(
                 RollPitchYaw(-np.pi / 2, 0, 0),
                 [rng.uniform(-0.25, 0.15), rng.uniform(-0.6, -0.4), 0.3],
             )
-        else:
+
+        elif mode == PlannerState.PICKING_FROM_Y_BIN:
             # Place in X bin:
+            
             X_G["place"] = RigidTransform(
                 RollPitchYaw(-np.pi / 2, 0, np.pi / 2),
                 [rng.uniform(0.35, 0.65), rng.uniform(-0.12, 0.28), 0.3],
             )
+        else:
+            # place in Z bin
+            X_G["place"] = RigidTransform(
+                RollPitchYaw(-np.pi / 2, 0, np.pi / 2),
+                [rng.uniform(0.35, 0.65), rng.uniform(-0.6, -0.4), 0.3],
+            )
+
+
 
         X_G, times = MakeGripperFrames(X_G, t0=context.get_time())
         print(
@@ -517,11 +527,13 @@ def clutter_clearing_demo():
     model_directives = """
 directives:
 """
-    '''
+
+    # NOTE: For whatever reason, this isn't working. (i.e. if I change my numbers to big, it's still not moving)
+    # TODO: MAKE THIS OVER THE SECOND BIN + TEST THE CAMERA POSITIONS OR MOVE IF NEEDED (LIKELY)
     NUM_CHICKEN = 10
     for i in range(NUM_CHICKEN):
         # porting over previous work
-        ranges = {"x": 0, "y": -0.6, "z": 0.2}
+        ranges_chicken = {"x": 10.5, "y": 10.5, "z": 10.5}
         name = "foam_chicken"
         num = i
         model_directives += f"""
@@ -529,10 +541,10 @@ directives:
     name: {name}_{num}
     file: file://{full_path}{name}.sdf
     default_free_body_pose:
-        base_link:
-            translation: [{ranges['x'] + np.random.randint(-10, 10)/50}, {ranges['y'] + np.random.randint(-10, 10)/50}, {ranges['z'] + np.random.randint(10)/10}]
+        base_link: # {name}_{num}:
+            translation: [0, -0.6, 0.2]
+            rotation: !Rpy {{ deg: [{np.random.randint(0, 90)}, {np.random.randint(0, 90)}, {np.random.randint(0, 90)}] }}
 """
-    '''
 
     NUM_BREAD = 5
     for num in range(NUM_BREAD):
@@ -546,7 +558,7 @@ directives:
         base_link:
             translation: [{ranges['x'] + np.random.randint(-10, 10)/50}, {ranges['y'] + np.random.randint(-10, 10)/50}, {ranges['z'] + np.random.randint(10)/10}]
 """
-    '''
+        '''
         model_directives += f"""
 - add_model:
     name: {name}_{num}
@@ -556,10 +568,11 @@ directives:
             translation: [{0.5 + np.random.randint(-10, 10)/50}, {-0.6 + np.random.randint(-10, 10)/50}, {0.01}] 
             rotation: !Rpy {{ deg: [{np.random.randint(0, 90)}, {np.random.randint(0, 90)}, {np.random.randint(0, 90)}] }}
 """
-    '''
-
+        '''
 
     scenario = add_directives(scenario, data=model_directives)
+
+    print(scenario.directives)
 
     station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
     to_point_cloud = AddPointClouds(
@@ -671,8 +684,6 @@ directives:
         station.GetOutputPort("body_poses"),
         z_bin_grasp_selector.GetInputPort("body_poses"),
     )
-
-
 
 
     planner = builder.AddSystem(Planner(plant))
