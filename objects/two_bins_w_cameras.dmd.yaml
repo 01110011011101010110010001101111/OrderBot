@@ -7,7 +7,7 @@ directives:
     name: camera0_origin
     X_PF:
         base_frame: world
-        rotation: !Rpy { deg: [-130.0, 0, 150.0]}
+        rotation: !Rpy { deg: [-130.0, 0, 150.0] }
         translation: [-.35, -.25, .5]
 
 - add_model:
@@ -48,4 +48,48 @@ directives:
     parent: camera2_origin
     child: camera2::base
 
+- add_frame:
+    name: camera3_origin
+    X_PF:
+        base_frame: world
+        rotation: !Rpy { deg: [-130.0, 0, 150.0] }
+        translation: [.45, -.25, .5]
+
+- add_model:
+    name: camera3
+    file: package://manipulation/camera_box.sdf
+
+- add_weld:
+    parent: camera3_origin
+    child: camera3::base
+
+- add_frame:
+    name: camera4_origin
+    X_PF:
+        base_frame: world
+        rotation: !Rpy { deg: [-150., 0, 0.0]}
+        translation: [0.35, -.7, .5]
+
+- add_model:
+    name: camera4
+    file: package://manipulation/camera_box.sdf
+
+- add_weld:
+    parent: camera4_origin
+    child: camera4::base
+
+- add_frame:
+    name: camera5_origin
+    X_PF:
+        base_frame: world
+        rotation: !Rpy { deg: [-140., 0, 90.0]}
+        translation: [.75, -.50, .45]
+
+- add_model:
+    name: camera5
+    file: package://manipulation/camera_box.sdf
+
+- add_weld:
+    parent: camera5_origin
+    child: camera5::base
 

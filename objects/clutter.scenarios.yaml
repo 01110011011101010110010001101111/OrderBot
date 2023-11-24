@@ -23,6 +23,25 @@ Clutter: &Clutter
       X_PB:
         base_frame: camera2::base
 
+    camera3:
+      name: camera3
+      depth: True
+      X_PB:
+        base_frame: camera3::base
+
+    camera4:
+      name: camera4
+      depth: True
+      X_PB:
+        base_frame: camera4::base
+
+    camera5:
+      name: camera5
+      depth: True
+      X_PB:
+        base_frame: camera5::base
+
+
 
 
   model_drivers:

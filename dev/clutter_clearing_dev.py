@@ -69,6 +69,10 @@ class PlannerState(Enum):
     GO_HOME = 4
     PICKING_FROM_Z_BIN = 5
 
+    got_first_bread = False
+    got_filling = False
+    got_second_bread = False
+
 
 class Planner(LeafSystem):
     def __init__(self, plant):
@@ -77,9 +81,9 @@ class Planner(LeafSystem):
         self.DeclareAbstractInputPort(
             "body_poses", AbstractValue.Make([RigidTransform()])
         )
-        # self._x_bin_grasp_index = self.DeclareAbstractInputPort(
-        #     "x_bin_grasp", AbstractValue.Make((np.inf, RigidTransform()))
-        # ).get_index()
+        self._x_bin_grasp_index = self.DeclareAbstractInputPort(
+            "x_bin_grasp", AbstractValue.Make((np.inf, RigidTransform()))
+        ).get_index()
         self._y_bin_grasp_index = self.DeclareAbstractInputPort(
             "y_bin_grasp", AbstractValue.Make((np.inf, RigidTransform()))
         ).get_index()
@@ -241,25 +245,69 @@ class Planner(LeafSystem):
 
         # TODO: CAN MODIFY TO WORK WITH DIFFERENT BINS WITH DIFFERENT THINGS
         cost = np.inf
+        retry = False
         for i in range(5):
+            # Y == chicken
+            # X == bread
+
+            # right now, default to if tried, succeeded. Can update later
             if mode == PlannerState.PICKING_FROM_Y_BIN:
-                cost, X_G["pick"] = self.get_input_port(self._y_bin_grasp_index).Eval(
+                if retry:
+                    # if we have to retry, don't add any new logic
+                    cost, X_G["pick"] = self.get_input_port(self._y_bin_grasp_index).Eval(
+                        context
+                    )
+                else:
+                    cost, X_G["pick"] = self.get_input_port(self._x_bin_grasp_index).Eval(
+                        context
+                    )
+                    PlannerState.got_filling = True
+                    mode = PlannerState.PICKING_FROM_X_BIN
+            elif mode == PlannerState.PICKING_FROM_X_BIN:
+                # if we have to retry, don't add any new logic
+                if retry: 
+                    cost, X_G["pick"] = self.get_input_port(self._x_bin_grasp_index).Eval(
+                        context
+                    )
+                    break
+                if PlannerState.got_first_bread:
+                    # we're done
+                    mode = PlannerState.GO_HOME
+                    PlannerState.got_second_bread = True
+                else:
+                    PlannerState.got_first_bread = True
+                    mode = PlannerState.PICKING_FROM_Y_BIN
+                    cost, X_G["pick"] = self.get_input_port(self._y_bin_grasp_index).Eval(
+                        context
+                    )
+ 
+            else:
+                mode = PlannerState.PICKING_FROM_X_BIN
+                cost, X_G["pick"] = self.get_input_port(self._x_bin_grasp_index).Eval(
                     context
                 )
-                if np.isinf(cost):
-                    mode = PlannerState.PICKING_FROM_X_BIN
-            else:
-                # cost, X_G["pick"] = self.get_input_port(self._x_bin_grasp_index).Eval(
-                #     context
-                # )
-                # if np.isinf(cost):
-                if True:
-                    mode = PlannerState.PICKING_FROM_Y_BIN
-                # else:
-                #     mode = PlannerState.PICKING_FROM_X_BIN
+ 
+                    
+            # if mode == PlannerState.PICKING_FROM_Y_BIN:
+            #     cost, X_G["pick"] = self.get_input_port(self._y_bin_grasp_index).Eval(
+            #         context
+            #     )
+            #     if np.isinf(cost):
+            #         mode = PlannerState.PICKING_FROM_X_BIN
+            # else:
+            #     # cost, X_G["pick"] = self.get_input_port(self._x_bin_grasp_index).Eval(
+            #     #     context
+            #     # )
+            #     # if np.isinf(cost):
+            #     if True:
+            #         mode = PlannerState.PICKING_FROM_Y_BIN
+            #     # else:
+            #     #     mode = PlannerState.PICKING_FROM_X_BIN
 
             if not np.isinf(cost):
                 break
+            else:
+                retry = True
 
         assert not np.isinf(
             cost
@@ -276,7 +324,7 @@ class Planner(LeafSystem):
         # TODO: we'll likely want it to increase as the sandwich size increases
         X_G["place"] = RigidTransform(
             RollPitchYaw(-np.pi / 2, 0, 0),
-            [rng.uniform(-0.01, 0.01), rng.uniform(-0.30, -0.20), 0.15],
+            [rng.uniform(-0.02, -0.01), rng.uniform(-0.26, -0.24), 0.15],
             # 0, -0.25, -0.015
         )
  
@@ -423,7 +471,7 @@ directives:
             translation: [{ranges['x'] + np.random.randint(-10, 10)/50}, {ranges['y'] + np.random.randint(-10, 10)/50}, {ranges['z'] + np.random.randint(10)/10}]
 """
 
-    NUM_BREAD = 5
+    NUM_BREAD = 10
     for num in range(NUM_BREAD):
         ranges = {"x": 0.5, "y": -0.5, "z": -0.05}
         name = "Pound_Cake_OBJ"
@@ -482,33 +530,33 @@ directives:
         y_bin_grasp_selector.GetInputPort("body_poses"),
     )
 
-    # x_bin_grasp_selector = builder.AddSystem(
-    #     GraspSelector(
-    #         plant,
-    #         plant.GetModelInstanceByName("bin1"),
-    #         camera_body_indices=[
-    #             plant.GetBodyIndices(plant.GetModelInstanceByName("camera3"))[0],
-    #             plant.GetBodyIndices(plant.GetModelInstanceByName("camera4"))[0],
-    #             plant.GetBodyIndices(plant.GetModelInstanceByName("camera5"))[0],
-    #         ],
-    #     )
-    # )
-    # builder.Connect(
-    #     to_point_cloud["camera3"].get_output_port(),
-    #     x_bin_grasp_selector.get_input_port(0),
-    # )
-    # builder.Connect(
-    #     to_point_cloud["camera4"].get_output_port(),
-    #     x_bin_grasp_selector.get_input_port(1),
-    # )
-    # builder.Connect(
-    #     to_point_cloud["camera5"].get_output_port(),
-    #     x_bin_grasp_selector.get_input_port(2),
-    # )
-    # builder.Connect(
-    #     station.GetOutputPort("body_poses"),
-    #     x_bin_grasp_selector.GetInputPort("body_poses"),
-    # )
+    x_bin_grasp_selector = builder.AddSystem(
+        GraspSelector(
+            plant,
+            plant.GetModelInstanceByName("bin1"),
+            camera_body_indices=[
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera3"))[0],
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera4"))[0],
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera5"))[0],
+            ],
+        )
+    )
+    builder.Connect(
+        to_point_cloud["camera3"].get_output_port(),
+        x_bin_grasp_selector.get_input_port(0),
+    )
+    builder.Connect(
+        to_point_cloud["camera4"].get_output_port(),
+        x_bin_grasp_selector.get_input_port(1),
+    )
+    builder.Connect(
+        to_point_cloud["camera5"].get_output_port(),
+        x_bin_grasp_selector.get_input_port(2),
+    )
+    builder.Connect(
+        station.GetOutputPort("body_poses"),
+        x_bin_grasp_selector.GetInputPort("body_poses"),
+    )
 
     ## trying to add the z bin
 
@@ -544,10 +592,10 @@ directives:
     builder.Connect(
         station.GetOutputPort("body_poses"), planner.GetInputPort("body_poses")
     )
-    # builder.Connect(
-    #     x_bin_grasp_selector.get_output_port(),
-    #     planner.GetInputPort("x_bin_grasp"),
-    # )
+    builder.Connect(
+        x_bin_grasp_selector.get_output_port(),
+        planner.GetInputPort("x_bin_grasp"),
+    )
     builder.Connect(
         y_bin_grasp_selector.get_output_port(),
         planner.GetInputPort("y_bin_grasp"),
