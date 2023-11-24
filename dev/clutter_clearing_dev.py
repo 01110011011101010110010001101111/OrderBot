@@ -77,15 +77,15 @@ class Planner(LeafSystem):
         self.DeclareAbstractInputPort(
             "body_poses", AbstractValue.Make([RigidTransform()])
         )
-        self._x_bin_grasp_index = self.DeclareAbstractInputPort(
-            "x_bin_grasp", AbstractValue.Make((np.inf, RigidTransform()))
-        ).get_index()
+        # self._x_bin_grasp_index = self.DeclareAbstractInputPort(
+        #     "x_bin_grasp", AbstractValue.Make((np.inf, RigidTransform()))
+        # ).get_index()
         self._y_bin_grasp_index = self.DeclareAbstractInputPort(
             "y_bin_grasp", AbstractValue.Make((np.inf, RigidTransform()))
         ).get_index()
-        self._z_bin_grasp_index = self.DeclareAbstractInputPort(
-            "z_bin_grasp", AbstractValue.Make((np.inf, RigidTransform()))
-        ).get_index()
+        # self._z_bin_grasp_index = self.DeclareAbstractInputPort(
+        #     "z_bin_grasp", AbstractValue.Make((np.inf, RigidTransform()))
+        # ).get_index()
         self._wsg_state_index = self.DeclareVectorInputPort("wsg_state", 2).get_index()
 
         self._mode_index = self.DeclareAbstractState(
@@ -249,13 +249,14 @@ class Planner(LeafSystem):
                 if np.isinf(cost):
                     mode = PlannerState.PICKING_FROM_X_BIN
             else:
-                cost, X_G["pick"] = self.get_input_port(self._x_bin_grasp_index).Eval(
-                    context
-                )
-                if np.isinf(cost):
+                # cost, X_G["pick"] = self.get_input_port(self._x_bin_grasp_index).Eval(
+                #     context
+                # )
+                # if np.isinf(cost):
+                if True:
                     mode = PlannerState.PICKING_FROM_Y_BIN
-                else:
-                    mode = PlannerState.PICKING_FROM_X_BIN
+                # else:
+                #     mode = PlannerState.PICKING_FROM_X_BIN
 
             if not np.isinf(cost):
                 break
@@ -269,19 +270,29 @@ class Planner(LeafSystem):
         # port.
 
         # TODO: CAN BE CHANGED TO X AND Y BINS
+        
+        # placing on the mat...
 
-        if mode == PlannerState.PICKING_FROM_X_BIN:
-            # Place in Y bin:
-            X_G["place"] = RigidTransform(
-                RollPitchYaw(-np.pi / 2, 0, 0),
-                [rng.uniform(-0.25, 0.15), rng.uniform(-0.6, -0.4), 0.3],
-            )
-        else:
-            # Place in X bin:
-            X_G["place"] = RigidTransform(
-                RollPitchYaw(-np.pi / 2, 0, np.pi / 2),
-                [rng.uniform(0.35, 0.65), rng.uniform(-0.12, 0.28), 0.3],
-            )
+        # TODO: we'll likely want it to increase as the sandwich size increases
+        X_G["place"] = RigidTransform(
+            RollPitchYaw(-np.pi / 2, 0, 0),
+            [rng.uniform(-0.01, 0.01), rng.uniform(-0.30, -0.20), 0.15],
+            # 0, -0.25, -0.015
+        )
+ 
+
+        # if mode == PlannerState.PICKING_FROM_X_BIN:
+        #     # Place in Y bin:
+        #     X_G["place"] = RigidTransform(
+        #         RollPitchYaw(-np.pi / 2, 0, 0),
+        #         [rng.uniform(-0.25, 0.15), rng.uniform(-0.6, -0.4), 0.3],
+        #     )
+        # else:
+        #     # Place in X bin:
+        #     X_G["place"] = RigidTransform(
+        #         RollPitchYaw(-np.pi / 2, 0, np.pi / 2),
+        #         [rng.uniform(0.35, 0.65), rng.uniform(-0.12, 0.28), 0.3],
+        #     )
 
         X_G, times = MakeGripperFrames(X_G, t0=context.get_time())
         print(
@@ -471,80 +482,80 @@ directives:
         y_bin_grasp_selector.GetInputPort("body_poses"),
     )
 
-    x_bin_grasp_selector = builder.AddSystem(
-        GraspSelector(
-            plant,
-            plant.GetModelInstanceByName("bin1"),
-            camera_body_indices=[
-                plant.GetBodyIndices(plant.GetModelInstanceByName("camera3"))[0],
-                plant.GetBodyIndices(plant.GetModelInstanceByName("camera4"))[0],
-                plant.GetBodyIndices(plant.GetModelInstanceByName("camera5"))[0],
-            ],
-        )
-    )
-    builder.Connect(
-        to_point_cloud["camera3"].get_output_port(),
-        x_bin_grasp_selector.get_input_port(0),
-    )
-    builder.Connect(
-        to_point_cloud["camera4"].get_output_port(),
-        x_bin_grasp_selector.get_input_port(1),
-    )
-    builder.Connect(
-        to_point_cloud["camera5"].get_output_port(),
-        x_bin_grasp_selector.get_input_port(2),
-    )
-    builder.Connect(
-        station.GetOutputPort("body_poses"),
-        x_bin_grasp_selector.GetInputPort("body_poses"),
-    )
+    # x_bin_grasp_selector = builder.AddSystem(
+    #     GraspSelector(
+    #         plant,
+    #         plant.GetModelInstanceByName("bin1"),
+    #         camera_body_indices=[
+    #             plant.GetBodyIndices(plant.GetModelInstanceByName("camera3"))[0],
+    #             plant.GetBodyIndices(plant.GetModelInstanceByName("camera4"))[0],
+    #             plant.GetBodyIndices(plant.GetModelInstanceByName("camera5"))[0],
+    #         ],
+    #     )
+    # )
+    # builder.Connect(
+    #     to_point_cloud["camera3"].get_output_port(),
+    #     x_bin_grasp_selector.get_input_port(0),
+    # )
+    # builder.Connect(
+    #     to_point_cloud["camera4"].get_output_port(),
+    #     x_bin_grasp_selector.get_input_port(1),
+    # )
+    # builder.Connect(
+    #     to_point_cloud["camera5"].get_output_port(),
+    #     x_bin_grasp_selector.get_input_port(2),
+    # )
+    # builder.Connect(
+    #     station.GetOutputPort("body_poses"),
+    #     x_bin_grasp_selector.GetInputPort("body_poses"),
+    # )
 
     ## trying to add the z bin
 
-    z_bin_grasp_selector = builder.AddSystem(
-        GraspSelector(
-            plant,
-            plant.GetModelInstanceByName("bin2"),
-            camera_body_indices=[
-                plant.GetBodyIndices(plant.GetModelInstanceByName("camera6"))[0],
-                plant.GetBodyIndices(plant.GetModelInstanceByName("camera7"))[0],
-                plant.GetBodyIndices(plant.GetModelInstanceByName("camera8"))[0],
-            ],
-        )
-    )
-    builder.Connect(
-        to_point_cloud["camera6"].get_output_port(),
-        z_bin_grasp_selector.get_input_port(0),
-    )
-    builder.Connect(
-        to_point_cloud["camera7"].get_output_port(),
-        z_bin_grasp_selector.get_input_port(1),
-    )
-    builder.Connect(
-        to_point_cloud["camera8"].get_output_port(),
-        z_bin_grasp_selector.get_input_port(2),
-    )
-    builder.Connect(
-        station.GetOutputPort("body_poses"),
-        z_bin_grasp_selector.GetInputPort("body_poses"),
-    )
+    # z_bin_grasp_selector = builder.AddSystem(
+    #     GraspSelector(
+    #         plant,
+    #         plant.GetModelInstanceByName("bin2"),
+    #         camera_body_indices=[
+    #             plant.GetBodyIndices(plant.GetModelInstanceByName("camera6"))[0],
+    #             plant.GetBodyIndices(plant.GetModelInstanceByName("camera7"))[0],
+    #             plant.GetBodyIndices(plant.GetModelInstanceByName("camera8"))[0],
+    #         ],
+    #     )
+    # )
+    # builder.Connect(
+    #     to_point_cloud["camera6"].get_output_port(),
+    #     z_bin_grasp_selector.get_input_port(0),
+    # )
+    # builder.Connect(
+    #     to_point_cloud["camera7"].get_output_port(),
+    #     z_bin_grasp_selector.get_input_port(1),
+    # )
+    # builder.Connect(
+    #     to_point_cloud["camera8"].get_output_port(),
+    #     z_bin_grasp_selector.get_input_port(2),
+    # )
+    # builder.Connect(
+    #     station.GetOutputPort("body_poses"),
+    #     z_bin_grasp_selector.GetInputPort("body_poses"),
+    # )
 
     planner = builder.AddSystem(Planner(plant))
     builder.Connect(
         station.GetOutputPort("body_poses"), planner.GetInputPort("body_poses")
     )
-    builder.Connect(
-        x_bin_grasp_selector.get_output_port(),
-        planner.GetInputPort("x_bin_grasp"),
-    )
+    # builder.Connect(
+    #     x_bin_grasp_selector.get_output_port(),
+    #     planner.GetInputPort("x_bin_grasp"),
+    # )
     builder.Connect(
         y_bin_grasp_selector.get_output_port(),
         planner.GetInputPort("y_bin_grasp"),
     )
-    builder.Connect(
-        z_bin_grasp_selector.get_output_port(),
-        planner.GetInputPort("z_bin_grasp"),
-    )
+    # builder.Connect(
+    #     z_bin_grasp_selector.get_output_port(),
+    #     planner.GetInputPort("z_bin_grasp"),
+    # )
     builder.Connect(
         station.GetOutputPort("wsg.state_measured"),
         planner.GetInputPort("wsg_state"),

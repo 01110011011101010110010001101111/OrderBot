@@ -13,14 +13,14 @@ directives:
 
 - add_model:
     name: bin0
-    file: file:///Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/bin.sdf
+    file: file:///Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/bin_ref.sdf
 
 - add_weld:
     parent: world
     child: bin0::bin_base
     X_PC:
       rotation: !Rpy { deg: [0.0, 0.0, 180.0 ]}
-      translation: [0, -0.75, -0.015]
+      translation: [-0.5, -0.5, -0.015]
 
 - add_model:
     name: bin1
@@ -31,7 +31,7 @@ directives:
     child: bin1::bin_base
     X_PC:
       rotation: !Rpy { deg: [0.0, 0.0, 180.0 ]}
-      translation: [-0.5, -0.5, -0.015]
+      translation: [0.5, -0.5, -0.015]
 
 - add_model:
     name: bin2
@@ -42,7 +42,7 @@ directives:
     child: bin2::bin_base
     X_PC:
       rotation: !Rpy { deg: [0.0, 0.0, 180.0 ]}
-      translation: [0.5, -0.5, -0.015]
+      translation: [0, -0.75, -0.015]
 
 
 
