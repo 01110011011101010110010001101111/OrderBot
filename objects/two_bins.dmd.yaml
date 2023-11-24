@@ -9,7 +9,7 @@ directives:
     child: mat::bin_base
     X_PC:
       rotation: !Rpy { deg: [0.0, 0.0, 180.0 ]}
-      translation: [0, -0.25, -0.015]
+      translation: [0, -0.3, -0.015]
 
 - add_model:
     name: bin0

@@ -61,6 +61,12 @@ generator = RandomGenerator(rng.integers(0, 1000))  # this is for c++
 # overridding the running_as_a_notebook
 running_as_notebook = True
 
+got_first_bread = False
+got_filling = False
+got_second_bread = False
+
+
+
 # States for state machine
 class PlannerState(Enum):
     WAIT_FOR_OBJECTS_TO_SETTLE = 1
@@ -68,10 +74,6 @@ class PlannerState(Enum):
     PICKING_FROM_Y_BIN = 3
     GO_HOME = 4
     PICKING_FROM_Z_BIN = 5
-
-    got_first_bread = False
-    got_filling = False
-    got_second_bread = False
 
 
 class Planner(LeafSystem):
@@ -246,9 +248,12 @@ class Planner(LeafSystem):
         # TODO: CAN MODIFY TO WORK WITH DIFFERENT BINS WITH DIFFERENT THINGS
         cost = np.inf
         retry = False
+        global got_first_bread, got_second_bread, got_filling
         for i in range(5):
             # Y == chicken
             # X == bread
+
+            print(PlannerState, got_first_bread, got_second_bread, got_filling)
 
             # right now, default to if tried, succeeded. Can update later
             if mode == PlannerState.PICKING_FROM_Y_BIN:
@@ -261,7 +266,7 @@ class Planner(LeafSystem):
                     cost, X_G["pick"] = self.get_input_port(self._x_bin_grasp_index).Eval(
                         context
                     )
-                    PlannerState.got_filling = True
+                    got_filling = True
                     mode = PlannerState.PICKING_FROM_X_BIN
             elif mode == PlannerState.PICKING_FROM_X_BIN:
                 # if we have to retry, don't add any new logic
@@ -270,12 +275,12 @@ class Planner(LeafSystem):
                         context
                     )
                     break
-                if PlannerState.got_first_bread:
+                if got_first_bread:
                     # we're done
                     mode = PlannerState.GO_HOME
-                    PlannerState.got_second_bread = True
+                    got_second_bread = True
                 else:
-                    PlannerState.got_first_bread = True
+                    got_first_bread = True
                     mode = PlannerState.PICKING_FROM_Y_BIN
                     cost, X_G["pick"] = self.get_input_port(self._y_bin_grasp_index).Eval(
                         context
