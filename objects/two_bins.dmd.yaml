@@ -2,7 +2,7 @@
 directives:
 - add_model:
     name: bin0
-    file: package://manipulation/hydro/bin.sdf
+    file: file:///Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/bin.sdf
 
 - add_weld:
     parent: world
@@ -13,7 +13,7 @@ directives:
 
 - add_model:
     name: bin1
-    file: package://manipulation/hydro/bin.sdf
+    file: file:///Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/bin.sdf
 
 - add_weld:
     parent: world
@@ -24,7 +24,7 @@ directives:
 
 - add_model:
     name: bin2
-    file: package://manipulation/hydro/bin.sdf
+    file: file:///Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/bin.sdf
 
 - add_weld:
     parent: world

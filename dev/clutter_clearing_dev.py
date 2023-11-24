@@ -40,7 +40,10 @@ from manipulation.station import (
     load_scenario,
 )
 
+from kinematics import GraspSelector
+
 full_path = "/Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/"
+
 
 class NoDiffIKWarnings(logging.Filter):
     def filter(self, record):
@@ -58,98 +61,7 @@ generator = RandomGenerator(rng.integers(0, 1000))  # this is for c++
 # overridding the running_as_a_notebook
 running_as_notebook = True
 
-
-# Another diagram for the objects the robot "knows about": gripper, cameras, bins.  Think of this as the model in the robot's head.
-def make_internal_model():
-    builder = DiagramBuilder()
-    plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.001)
-    parser = Parser(plant)
-    ConfigureParser(parser)
-    # TODO: IMPORT CUSTOM VERSION INSTEAD!!!
-    # parser.AddModelsFromUrl("package://manipulation/clutter_planning.dmd.yaml")
-    parser.AddModels(f"{full_path}tmp.dmd.yaml")
-    plant.Finalize()
-    return builder.Build()
-
-
-# Takes 3 point clouds (in world coordinates) as input, and outputs and estimated pose for the mustard bottle.
-class GraspSelector(LeafSystem):
-    def __init__(self, plant, bin_instance, camera_body_indices):
-        LeafSystem.__init__(self)
-        model_point_cloud = AbstractValue.Make(PointCloud(0))
-        self.DeclareAbstractInputPort("cloud0_W", model_point_cloud)
-        self.DeclareAbstractInputPort("cloud1_W", model_point_cloud)
-        self.DeclareAbstractInputPort("cloud2_W", model_point_cloud)
-        self.DeclareAbstractInputPort(
-            "body_poses", AbstractValue.Make([RigidTransform()])
-        )
-
-        port = self.DeclareAbstractOutputPort(
-            "grasp_selection",
-            lambda: AbstractValue.Make((np.inf, RigidTransform())),
-            self.SelectGrasp,
-        )
-        port.disable_caching_by_default()
-
-        # Compute crop box.
-        context = plant.CreateDefaultContext()
-        bin_body = plant.GetBodyByName("bin_base", bin_instance)
-        X_B = plant.EvalBodyPoseInWorld(context, bin_body)
-        margin = 0.001  # only because simulation is perfect!
-        a = X_B.multiply(
-            [-0.22 + 0.025 + margin, -0.29 + 0.025 + margin, 0.015 + margin]
-        )
-        b = X_B.multiply([0.22 - 0.1 - margin, 0.29 - 0.025 - margin, 2.0])
-        self._crop_lower = np.minimum(a, b)
-        self._crop_upper = np.maximum(a, b)
-
-        self._internal_model = make_internal_model()
-        self._internal_model_context = (
-            self._internal_model.CreateDefaultContext()
-        )
-        self._rng = np.random.default_rng()
-        self._camera_body_indices = camera_body_indices
-
-    def SelectGrasp(self, context, output):
-        body_poses = self.get_input_port(3).Eval(context)
-        pcd = []
-        for i in range(3):
-            cloud = self.get_input_port(i).Eval(context)
-            pcd.append(cloud.Crop(self._crop_lower, self._crop_upper))
-            pcd[i].EstimateNormals(radius=0.1, num_closest=30)
-
-            # Flip normals toward camera
-            X_WC = body_poses[self._camera_body_indices[i]]
-            pcd[i].FlipNormalsTowardPoint(X_WC.translation())
-        merged_pcd = Concatenate(pcd)
-        down_sampled_pcd = merged_pcd.VoxelizedDownSample(voxel_size=0.005)
-
-        costs = []
-        X_Gs = []
-        # TODO(russt): Take the randomness from an input port, and re-enable
-        # caching.
-        for i in range(100 if running_as_notebook else 2):
-            cost, X_G = GenerateAntipodalGraspCandidate(
-                self._internal_model,
-                self._internal_model_context,
-                down_sampled_pcd,
-                self._rng,
-            )
-            if np.isfinite(cost):
-                costs.append(cost)
-                X_Gs.append(X_G)
-
-        if len(costs) == 0:
-            # Didn't find a viable grasp candidate
-            X_WG = RigidTransform(
-                RollPitchYaw(-np.pi / 2, 0, np.pi / 2), [0.5, 0, 0.22]
-            )
-            output.set_value((np.inf, X_WG))
-        else:
-            best = np.argmin(costs)
-            output.set_value((costs[best], X_Gs[best]))
-
-
+# States for state machine
 class PlannerState(Enum):
     WAIT_FOR_OBJECTS_TO_SETTLE = 1
     PICKING_FROM_X_BIN = 2
@@ -174,9 +86,7 @@ class Planner(LeafSystem):
         self._z_bin_grasp_index = self.DeclareAbstractInputPort(
             "z_bin_grasp", AbstractValue.Make((np.inf, RigidTransform()))
         ).get_index()
-        self._wsg_state_index = self.DeclareVectorInputPort(
-            "wsg_state", 2
-        ).get_index()
+        self._wsg_state_index = self.DeclareVectorInputPort("wsg_state", 2).get_index()
 
         self._mode_index = self.DeclareAbstractState(
             AbstractValue.Make(PlannerState.WAIT_FOR_OBJECTS_TO_SETTLE)
@@ -245,13 +155,8 @@ class Planner(LeafSystem):
 
         # If we are between pick and place and the gripper is closed, then
         # we've missed or dropped the object.  Time to replan.
-        if (
-            current_time > times["postpick"]
-            and current_time < times["preplace"]
-        ):
-            wsg_state = self.get_input_port(self._wsg_state_index).Eval(
-                context
-            )
+        if current_time > times["postpick"] and current_time < times["preplace"]:
+            wsg_state = self.get_input_port(self._wsg_state_index).Eval(context)
             if wsg_state[0] < 0.01:
                 attempts = state.get_mutable_discrete_state(
                     int(self._attempts_index)
@@ -274,42 +179,33 @@ class Planner(LeafSystem):
                     return
 
                 attempts[0] += 1
-                state.get_mutable_abstract_state(
-                    int(self._mode_index)
-                ).set_value(PlannerState.WAIT_FOR_OBJECTS_TO_SETTLE)
+                state.get_mutable_abstract_state(int(self._mode_index)).set_value(
+                    PlannerState.WAIT_FOR_OBJECTS_TO_SETTLE
+                )
                 times = {"initial": current_time}
-                state.get_mutable_abstract_state(
-                    int(self._times_index)
-                ).set_value(times)
+                state.get_mutable_abstract_state(int(self._times_index)).set_value(
+                    times
+                )
                 X_G = self.get_input_port(0).Eval(context)[
                     int(self._gripper_body_index)
                 ]
-                state.get_mutable_abstract_state(
-                    int(self._traj_X_G_index)
-                ).set_value(
-                    PiecewisePose.MakeLinear(
-                        [current_time, np.inf], [X_G, X_G]
-                    )
+                state.get_mutable_abstract_state(int(self._traj_X_G_index)).set_value(
+                    PiecewisePose.MakeLinear([current_time, np.inf], [X_G, X_G])
                 )
                 return
 
-        traj_X_G = context.get_abstract_state(
-            int(self._traj_X_G_index)
-        ).get_value()
+        traj_X_G = context.get_abstract_state(int(self._traj_X_G_index)).get_value()
         if not traj_X_G.is_time_in_range(current_time):
             self.Plan(context, state)
             return
 
-        X_G = self.get_input_port(0).Eval(context)[
-            int(self._gripper_body_index)
-        ]
+        X_G = self.get_input_port(0).Eval(context)[int(self._gripper_body_index)]
         # if current_time > 10 and current_time < 12:
         #    self.GoHome(context, state)
         #    return
         if (
             np.linalg.norm(
-                traj_X_G.GetPose(current_time).translation()
-                - X_G.translation()
+                traj_X_G.GetPose(current_time).translation() - X_G.translation()
             )
             > 0.2
         ):
@@ -332,14 +228,10 @@ class Planner(LeafSystem):
         q_traj = PiecewisePolynomial.FirstOrderHold(
             [current_time, current_time + 5.0], np.vstack((q, q0)).T
         )
-        state.get_mutable_abstract_state(int(self._traj_q_index)).set_value(
-            q_traj
-        )
+        state.get_mutable_abstract_state(int(self._traj_q_index)).set_value(q_traj)
 
     def Plan(self, context, state):
-        mode = copy(
-            state.get_mutable_abstract_state(int(self._mode_index)).get_value()
-        )
+        mode = copy(state.get_mutable_abstract_state(int(self._mode_index)).get_value())
 
         X_G = {
             "initial": self.get_input_port(0).Eval(context)[
@@ -351,15 +243,15 @@ class Planner(LeafSystem):
         cost = np.inf
         for i in range(5):
             if mode == PlannerState.PICKING_FROM_Y_BIN:
-                cost, X_G["pick"] = self.get_input_port(
-                    self._y_bin_grasp_index
-                ).Eval(context)
+                cost, X_G["pick"] = self.get_input_port(self._y_bin_grasp_index).Eval(
+                    context
+                )
                 if np.isinf(cost):
                     mode = PlannerState.PICKING_FROM_X_BIN
             else:
-                cost, X_G["pick"] = self.get_input_port(
-                    self._x_bin_grasp_index
-                ).Eval(context)
+                cost, X_G["pick"] = self.get_input_port(self._x_bin_grasp_index).Eval(
+                    context
+                )
                 if np.isinf(cost):
                     mode = PlannerState.PICKING_FROM_Y_BIN
                 else:
@@ -395,9 +287,7 @@ class Planner(LeafSystem):
         print(
             f"Planned {times['postplace'] - times['initial']} second trajectory in mode {mode} at time {context.get_time()}."
         )
-        state.get_mutable_abstract_state(int(self._times_index)).set_value(
-            times
-        )
+        state.get_mutable_abstract_state(int(self._times_index)).set_value(times)
 
         if False:  # Useful for debugging
             AddMeshcatTriad(meshcat, "X_Oinitial", X_PT=X_O["initial"])
@@ -408,9 +298,7 @@ class Planner(LeafSystem):
         traj_X_G = MakeGripperPoseTrajectory(X_G, times)
         traj_wsg_command = MakeGripperCommandTrajectory(times)
 
-        state.get_mutable_abstract_state(int(self._traj_X_G_index)).set_value(
-            traj_X_G
-        )
+        state.get_mutable_abstract_state(int(self._traj_X_G_index)).set_value(traj_X_G)
         state.get_mutable_abstract_state(int(self._traj_wsg_index)).set_value(
             traj_wsg_command
         )
@@ -424,17 +312,13 @@ class Planner(LeafSystem):
 
     def end_time(self, context):
         return (
-            context.get_abstract_state(int(self._traj_X_G_index))
-            .get_value()
-            .end_time()
+            context.get_abstract_state(int(self._traj_X_G_index)).get_value().end_time()
         )
 
     def CalcGripperPose(self, context, output):
         context.get_abstract_state(int(self._mode_index)).get_value()
 
-        traj_X_G = context.get_abstract_state(
-            int(self._traj_X_G_index)
-        ).get_value()
+        traj_X_G = context.get_abstract_state(int(self._traj_X_G_index)).get_value()
         if traj_X_G.get_number_of_segments() > 0 and traj_X_G.is_time_in_range(
             context.get_time()
         ):
@@ -462,9 +346,7 @@ class Planner(LeafSystem):
             output.SetFromVector([opened])
             return
 
-        traj_wsg = context.get_abstract_state(
-            int(self._traj_wsg_index)
-        ).get_value()
+        traj_wsg = context.get_abstract_state(int(self._traj_wsg_index)).get_value()
         if traj_wsg.get_number_of_segments() > 0 and traj_wsg.is_time_in_range(
             context.get_time()
         ):
@@ -499,9 +381,7 @@ class Planner(LeafSystem):
         )
 
     def CalcIiwaPosition(self, context, output):
-        traj_q = context.get_mutable_abstract_state(
-            int(self._traj_q_index)
-        ).get_value()
+        traj_q = context.get_mutable_abstract_state(int(self._traj_q_index)).get_value()
 
         output.SetFromVector(traj_q.value(context.get_time()))
 
@@ -558,13 +438,10 @@ directives:
 """
     '''
 
-
     scenario = add_directives(scenario, data=model_directives)
 
     station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
-    to_point_cloud = AddPointClouds(
-        scenario=scenario, station=station, builder=builder
-    )
+    to_point_cloud = AddPointClouds(scenario=scenario, station=station, builder=builder)
     plant = station.GetSubsystemByName("plant")
 
     ### CREATE GRASP SELECTOR FOR EACH PORT
@@ -573,15 +450,9 @@ directives:
             plant,
             plant.GetModelInstanceByName("bin0"),
             camera_body_indices=[
-                plant.GetBodyIndices(plant.GetModelInstanceByName("camera0"))[
-                    0
-                ],
-                plant.GetBodyIndices(plant.GetModelInstanceByName("camera1"))[
-                    0
-                ],
-                plant.GetBodyIndices(plant.GetModelInstanceByName("camera2"))[
-                    0
-                ],
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera0"))[0],
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera1"))[0],
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera2"))[0],
             ],
         )
     )
@@ -607,15 +478,9 @@ directives:
             plant,
             plant.GetModelInstanceByName("bin1"),
             camera_body_indices=[
-                plant.GetBodyIndices(plant.GetModelInstanceByName("camera3"))[
-                    0
-                ],
-                plant.GetBodyIndices(plant.GetModelInstanceByName("camera4"))[
-                    0
-                ],
-                plant.GetBodyIndices(plant.GetModelInstanceByName("camera5"))[
-                    0
-                ],
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera3"))[0],
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera4"))[0],
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera5"))[0],
             ],
         )
     )
@@ -643,15 +508,9 @@ directives:
             plant,
             plant.GetModelInstanceByName("bin2"),
             camera_body_indices=[
-                plant.GetBodyIndices(plant.GetModelInstanceByName("camera6"))[
-                    0
-                ],
-                plant.GetBodyIndices(plant.GetModelInstanceByName("camera7"))[
-                    0
-                ],
-                plant.GetBodyIndices(plant.GetModelInstanceByName("camera8"))[
-                    0
-                ],
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera6"))[0],
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera7"))[0],
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera8"))[0],
             ],
         )
     )
@@ -671,9 +530,6 @@ directives:
         station.GetOutputPort("body_poses"),
         z_bin_grasp_selector.GetInputPort("body_poses"),
     )
-
-
-
 
     planner = builder.AddSystem(Planner(plant))
     builder.Connect(
@@ -723,16 +579,12 @@ directives:
 
     # The DiffIK and the direct position-control modes go through a PortSwitch
     switch = builder.AddSystem(PortSwitch(7))
-    builder.Connect(
-        diff_ik.get_output_port(), switch.DeclareInputPort("diff_ik")
-    )
+    builder.Connect(diff_ik.get_output_port(), switch.DeclareInputPort("diff_ik"))
     builder.Connect(
         planner.GetOutputPort("iiwa_position_command"),
         switch.DeclareInputPort("position"),
     )
-    builder.Connect(
-        switch.get_output_port(), station.GetInputPort("iiwa.position")
-    )
+    builder.Connect(switch.get_output_port(), station.GetInputPort("iiwa.position"))
     builder.Connect(
         planner.GetOutputPort("control_mode"),
         switch.get_port_selector_input_port(),
