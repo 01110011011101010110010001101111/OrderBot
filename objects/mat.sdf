@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<sdf version="1.7">
+  <model name="bin_model">
+    <!--
+    Axes:
+      +X - Pointing towards front (slope)
+      +Y - Pointing to left side
+      +Z - Up
+    Origin:
+      (0, 0, 0) at the center bottom of the bin
+    -->
+    <link name="bin_base">
+      <inertial>
+        <mass>18.70</mass>
+        <inertia>
+          <ixx>0.79</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.53</iyy>
+          <iyz>0</iyz>
+          <izz>1.2</izz>
+        </inertia>
+      </inertial>
+      <visual name="bottom">
+        <pose>0.0 0.0 0.0075 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.39 0.23 0.015</size>
+          </box>
+        </geometry>
+        <material>
+          <diffuse>0.2 0.2 0.2 1.0</diffuse>
+        </material>
+      </visual>
+      <collision name="bottom">
+        <pose>0.0 0.0 0.0075 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.39 0.23 0.015</size>
+          </box>
+        </geometry>
+        <drake:proximity_properties>
+          <drake:compliant_hydroelastic/>
+          <drake:hydroelastic_modulus>1.0e6</drake:hydroelastic_modulus>
+        </drake:proximity_properties>
+      </collision>
+    </link>
+    <frame name="bin_front_top_center">
+      <pose relative_to="bin_base">0.22 0 0.21 0 0 0</pose>
+    </frame>
+  </model>
+</sdf>
