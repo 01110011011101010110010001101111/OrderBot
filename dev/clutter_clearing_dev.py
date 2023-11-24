@@ -397,11 +397,10 @@ def clutter_clearing_demo():
     model_directives = """
 directives:
 """
-    '''
     NUM_CHICKEN = 10
     for i in range(NUM_CHICKEN):
         # porting over previous work
-        ranges = {"x": 0, "y": -0.6, "z": 0.2}
+        ranges = {"x": -0.5, "y": -0.5, "z": -0.05}
         name = "foam_chicken"
         num = i
         model_directives += f"""
@@ -412,11 +411,10 @@ directives:
         base_link:
             translation: [{ranges['x'] + np.random.randint(-10, 10)/50}, {ranges['y'] + np.random.randint(-10, 10)/50}, {ranges['z'] + np.random.randint(10)/10}]
 """
-    '''
 
     NUM_BREAD = 5
     for num in range(NUM_BREAD):
-        ranges = {"x": 100.0, "y": -1000.6, "z": 0.2}
+        ranges = {"x": 0.5, "y": -0.5, "z": -0.05}
         name = "Pound_Cake_OBJ"
         model_directives += f"""
 - add_model:
@@ -598,15 +596,15 @@ directives:
     simulator = Simulator(diagram)
     context = simulator.get_context()
 
-    plant_context = plant.GetMyMutableContextFromRoot(context)
-    z = 0.2
-    for body_index in plant.GetFloatingBaseBodies():
-        tf = RigidTransform(
-            UniformlyRandomRotationMatrix(generator),
-            [rng.uniform(0.35, 0.65), rng.uniform(-0.12, 0.28), z],
-        )
-        plant.SetFreeBodyPose(plant_context, plant.get_body(body_index), tf)
-        z += 0.1
+    # plant_context = plant.GetMyMutableContextFromRoot(context)
+    # z = 0.2
+    # for body_index in plant.GetFloatingBaseBodies():
+    #     tf = RigidTransform(
+    #         UniformlyRandomRotationMatrix(generator),
+    #         [rng.uniform(0.35, 0.65), rng.uniform(-0.12, 0.28), z],
+    #     )
+    #     plant.SetFreeBodyPose(plant_context, plant.get_body(body_index), tf)
+    #     z += 0.1
 
     simulator.AdvanceTo(0.1)
     meshcat.Flush()  # Wait for the large object meshes to get to meshcat.
@@ -617,6 +615,7 @@ directives:
         print("Press Escape to stop the simulation")
         while meshcat.GetButtonClicks("Stop Simulation") < 1:
             simulator.AdvanceTo(simulator.get_context().get_time() + 2.0)
+            pass
         meshcat.DeleteButton("Stop Simulation")
 
 
