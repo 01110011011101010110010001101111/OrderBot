@@ -279,6 +279,7 @@ class Planner(LeafSystem):
                     # we're done
                     mode = PlannerState.GO_HOME
                     got_second_bread = True
+                    assert False, "Done!"
                 else:
                     got_first_bread = True
                     mode = PlannerState.PICKING_FROM_Y_BIN
@@ -327,11 +328,19 @@ class Planner(LeafSystem):
         # placing on the mat...
 
         # TODO: we'll likely want it to increase as the sandwich size increases
-        X_G["place"] = RigidTransform(
-            RollPitchYaw(-np.pi / 2, 0, 0),
-            [rng.uniform(-0.02, -0.01), rng.uniform(-0.26, -0.24), 0.15],
-            # 0, -0.25, -0.015
-        )
+        if mode == PlannerState.PICKING_FROM_X_BIN:
+            X_G["place"] = RigidTransform(
+                RollPitchYaw(-np.pi / 2, 0, 0),
+                [-0.01, -0.25, 0.15],
+                # 0, -0.25, -0.015
+            )
+        else:
+            # making the toppings a bit closer since it bounces as is
+            X_G["place"] = RigidTransform(
+                RollPitchYaw(-np.pi / 2, 0, 0),
+                [-0.01, -0.25, 0.12],
+                # 0, -0.25, -0.015
+            )
  
 
         # if mode == PlannerState.PICKING_FROM_X_BIN:
