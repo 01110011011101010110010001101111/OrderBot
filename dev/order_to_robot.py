@@ -41,6 +41,7 @@ from manipulation.station import (
 )
 
 from kinematics import GraspSelector
+from order_to_plan import get_order 
 
 full_path = "/Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/"
 
@@ -65,7 +66,12 @@ got_first_bread = False
 got_filling = False
 got_second_bread = False
 
+"""
+Gameplan:
 
+We need dynamic states and a state for mapping orders to bins. 
+The orders to bins can be reasoned from vision later
+"""
 
 # States for state machine
 class PlannerState(Enum):

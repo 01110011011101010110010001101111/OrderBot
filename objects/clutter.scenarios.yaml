@@ -1,7 +1,7 @@
 Clutter: &Clutter
   directives: &ClutterDirectives
   - add_directives:
-      file: package://manipulation/iiwa_and_wsg.dmd.yaml
+      file: file:///Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/iiwa_test.dmd.yaml
   - add_directives:
       file: file:///Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/two_bins_w_cameras.dmd.yaml
   cameras:
@@ -45,9 +45,7 @@ Clutter: &Clutter
 
 
   model_drivers:
-      iiwa: !IiwaDriver
-        hand_model_name: wsg
-      wsg: !SchunkWsgDriver {}
+      iiwa+wsg: !InverseDynamicsDriver {}
 
 Mustard:
   <<: *Clutter
