@@ -1,9 +1,29 @@
 Clutter: &Clutter
   directives: &ClutterDirectives
   - add_directives:
-      file: file:///Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/iiwa_test.dmd.yaml
-  - add_directives:
       file: file:///Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/two_bins_w_cameras.dmd.yaml
+
+  - add_model:
+      name: iiwa
+      file: package://manipulation/mobile_iiwa14_primitive_collision.urdf
+      default_joint_positions:
+          iiwa_joint_1: [-1.57]
+          iiwa_joint_2: [0.1]
+          iiwa_joint_3: [0]
+          iiwa_joint_4: [-1.2]
+          iiwa_joint_5: [0]
+          iiwa_joint_6: [ 1.6]
+          iiwa_joint_7: [0]
+  - add_model:
+      name: wsg
+      file: package://manipulation/hydro/schunk_wsg_50_with_tip.sdf
+  - add_weld:
+      parent: iiwa::iiwa_link_7
+      child: wsg::body
+      X_PC:
+          translation: [0, 0, 0.09]
+          rotation: !Rpy { deg: [90, 0, 90]}
+
   cameras:
     camera0:
       name: camera0
@@ -40,9 +60,6 @@ Clutter: &Clutter
       depth: True
       X_PB:
         base_frame: camera5::base
-
-
-
 
   model_drivers:
       iiwa+wsg: !InverseDynamicsDriver {}
