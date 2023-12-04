@@ -228,6 +228,7 @@ class Planner(LeafSystem):
 
     def GoHome(self, context, state):
         print("Replanning due to large tracking error.")
+        idx -= 1
         state.get_mutable_abstract_state(int(self._mode_index)).set_value(
             PlannerState.GO_HOME
         )
