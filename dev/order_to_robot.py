@@ -63,12 +63,14 @@ running_as_notebook = True
 
 tasks = ["bread", "chicken", "bread"]
 so_far = [False, False, False]
-idx = 0
+idx = -1
 
 states = {
-    "bread": 2,
-    "chicken": 3,
+    "bread": 3,
+    "chicken": 2,
 }
+
+mode_to_str = {states[key]: key for key in states}
 
 # States for state machine
 class PlannerState(Enum):
@@ -367,7 +369,7 @@ class Planner(LeafSystem):
 
         X_G, times = MakeGripperFrames(X_G, t0=context.get_time())
         print(
-            f"Planned {times['postplace'] - times['initial']} second trajectory in mode {mode} at time {context.get_time()}."
+            f"Planned {times['postplace'] - times['initial']} second trajectory in mode {mode}—{mode_to_str[mode]} at time {context.get_time()}."
         )
         state.get_mutable_abstract_state(int(self._times_index)).set_value(times)
 
