@@ -41,7 +41,6 @@ from manipulation.station import (
 )
 
 from kinematics import GraspSelector
-from order_to_plan import get_order 
 
 full_path = "/Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/"
 
@@ -62,23 +61,21 @@ generator = RandomGenerator(rng.integers(0, 1000))  # this is for c++
 # overridding the running_as_a_notebook
 running_as_notebook = True
 
-got_first_bread = False
-got_filling = False
-got_second_bread = False
+tasks = ["bread", "chicken", "bread"]
+so_far = [False, False, False]
+idx = 0
 
-"""
-Gameplan:
-
-We need dynamic states and a state for mapping orders to bins. 
-The orders to bins can be reasoned from vision later
-"""
+states = {
+    "bread": 2,
+    "chicken": 3,
+}
 
 # States for state machine
 class PlannerState(Enum):
     WAIT_FOR_OBJECTS_TO_SETTLE = 1
+    GO_HOME = 2
     PICKING_FROM_X_BIN = 2
     PICKING_FROM_Y_BIN = 3
-    GO_HOME = 4
     PICKING_FROM_Z_BIN = 5
 
 
@@ -251,15 +248,20 @@ class Planner(LeafSystem):
             ]
         }
 
+        global tasks, so_far, states, idx
+        idx += 1
+        if idx > len(tasks):
+            assert False
+        mode = states[tasks[idx]]
+
         # TODO: CAN MODIFY TO WORK WITH DIFFERENT BINS WITH DIFFERENT THINGS
         cost = np.inf
         retry = False
-        global got_first_bread, got_second_bread, got_filling
         for i in range(5):
             # Y == chicken
             # X == bread
 
-            print(PlannerState, got_first_bread, got_second_bread, got_filling)
+            # print(PlannerState, got_first_bread, got_second_bread, got_filling)
 
             # right now, default to if tried, succeeded. Can update later
             if mode == PlannerState.PICKING_FROM_Y_BIN:
@@ -294,7 +296,8 @@ class Planner(LeafSystem):
                     )
  
             else:
-                mode = PlannerState.PICKING_FROM_X_BIN
+                mode = states[tasks[idx]]
+                # idx += 1
                 cost, X_G["pick"] = self.get_input_port(self._x_bin_grasp_index).Eval(
                     context
                 )
@@ -470,7 +473,7 @@ def clutter_clearing_demo():
     builder = DiagramBuilder()
 
     scenario = load_scenario(
-        filename=FindResource(f"{full_path}/clutter.scenarios.yaml"),
+        filename=FindResource(f"{full_path}/_clutter.scenarios.yaml"),
         scenario_name="Clutter",
     )
     model_directives = """
@@ -503,17 +506,17 @@ directives:
         base_link:
             translation: [{ranges['x'] + np.random.randint(-10, 10)/50}, {ranges['y'] + np.random.randint(-10, 10)/50}, {ranges['z'] + np.random.randint(10)/10}]
 """
-        '''
+    '''
         model_directives += f"""
 - add_model:
     name: {name}_{num}
-    file: file://{full_path}__{name}.sdf
+    file: file://{full_path}{name}.sdf
     default_free_body_pose:
-        {name}:
+        {name}: # Change here!
             translation: [{0.5 + np.random.randint(-10, 10)/50}, {-0.6 + np.random.randint(-10, 10)/50}, {0.01}] 
             rotation: !Rpy {{ deg: [{np.random.randint(0, 90)}, {np.random.randint(0, 90)}, {np.random.randint(0, 90)}] }}
 """
-        '''
+    '''
 
     scenario = add_directives(scenario, data=model_directives)
 
