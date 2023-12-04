@@ -61,24 +61,24 @@ generator = RandomGenerator(rng.integers(0, 1000))  # this is for c++
 # overridding the running_as_a_notebook
 running_as_notebook = True
 
+# States for state machine
+class PlannerState(Enum):
+    WAIT_FOR_OBJECTS_TO_SETTLE = 1
+    GO_HOME = 2
+    PICKING_FROM_X_BIN = 3
+    PICKING_FROM_Y_BIN = 4
+    PICKING_FROM_Z_BIN = 5
+
 tasks = ["bread", "chicken", "bread"]
 so_far = [False, False, False]
 idx = -1
 
 states = {
-    "bread": 3,
-    "chicken": 2,
+    "bread": PlannerState.PICKING_FROM_X_BIN,
+    "chicken": PlannerState.PICKING_FROM_Y_BIN,
 }
 
 mode_to_str = {states[key]: key for key in states}
-
-# States for state machine
-class PlannerState(Enum):
-    WAIT_FOR_OBJECTS_TO_SETTLE = 1
-    GO_HOME = 2
-    PICKING_FROM_X_BIN = 2
-    PICKING_FROM_Y_BIN = 3
-    PICKING_FROM_Z_BIN = 5
 
 
 class Planner(LeafSystem):
@@ -228,6 +228,7 @@ class Planner(LeafSystem):
 
     def GoHome(self, context, state):
         print("Replanning due to large tracking error.")
+        global idx
         idx -= 1
         state.get_mutable_abstract_state(int(self._mode_index)).set_value(
             PlannerState.GO_HOME
@@ -253,8 +254,8 @@ class Planner(LeafSystem):
 
         global tasks, so_far, states, idx
         idx += 1
-        if idx > len(tasks):
-            assert False
+        if idx >= len(tasks):
+            assert False, "done with all the tasks!"
         mode = states[tasks[idx]]
 
         # TODO: CAN MODIFY TO WORK WITH DIFFERENT BINS WITH DIFFERENT THINGS
@@ -268,39 +269,39 @@ class Planner(LeafSystem):
 
             # right now, default to if tried, succeeded. Can update later
             if mode == PlannerState.PICKING_FROM_Y_BIN:
-                if retry:
-                    # if we have to retry, don't add any new logic
-                    cost, X_G["pick"] = self.get_input_port(self._y_bin_grasp_index).Eval(
-                        context
-                    )
-                else:
-                    cost, X_G["pick"] = self.get_input_port(self._x_bin_grasp_index).Eval(
-                        context
-                    )
-                    got_filling = True
-                    mode = PlannerState.PICKING_FROM_X_BIN
+                # if retry:
+                #     # if we have to retry, don't add any new logic
+                print("going for y...")
+                cost, X_G["pick"] = self.get_input_port(self._y_bin_grasp_index).Eval(
+                    context
+                )
+                #         context
+                #     )
+                #     got_filling = True
+                #     mode = PlannerState.PICKING_FROM_X_BIN
             elif mode == PlannerState.PICKING_FROM_X_BIN:
                 # if we have to retry, don't add any new logic
-                if retry: 
-                    cost, X_G["pick"] = self.get_input_port(self._x_bin_grasp_index).Eval(
-                        context
-                    )
-                    break
-                if got_first_bread:
-                    # we're done
-                    mode = PlannerState.GO_HOME
-                    got_second_bread = True
-                    assert False, "Done!"
-                else:
-                    got_first_bread = True
-                    mode = PlannerState.PICKING_FROM_Y_BIN
-                    cost, X_G["pick"] = self.get_input_port(self._y_bin_grasp_index).Eval(
-                        context
-                    )
- 
+                # if retry: 
+                print("going for x from x...")
+                cost, X_G["pick"] = self.get_input_port(self._x_bin_grasp_index).Eval(
+                    context
+                )
+                #     break
+                # if got_first_bread:
+                #     # we're done
+                #     mode = PlannerState.GO_HOME
+                #     got_second_bread = True
+                #     assert False, "Done!"
+                # else:
+                #     got_first_bread = True
+                #     mode = PlannerState.PICKING_FROM_Y_BIN
+                #     cost, X_G["pick"] = self.get_input_port(self._y_bin_grasp_index).Eval(
+                #         context
+                #     )
             else:
-                mode = states[tasks[idx]]
+                # mode = states[tasks[idx]]
                 # idx += 1
+                print("going for x...")
                 cost, X_G["pick"] = self.get_input_port(self._x_bin_grasp_index).Eval(
                     context
                 )
