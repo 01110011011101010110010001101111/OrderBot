@@ -40,7 +40,13 @@ from manipulation.station import (
     load_scenario,
 )
 
-from mobile_kinematics import GraspSelector
+from kinematics import GraspSelector
+from mod_pick import (
+    MakeGripperCommandTrajectory_Squeeze,
+    MakeGripperFrames_Squeeze,
+    MakeGripperPoseTrajectory_Squeeze,
+)
+ 
 
 full_path = "/Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/"
 
@@ -61,19 +67,24 @@ generator = RandomGenerator(rng.integers(0, 1000))  # this is for c++
 # overridding the running_as_a_notebook
 running_as_notebook = True
 
-got_first_bread = False
-got_filling = False
-got_second_bread = False
-
-
-
 # States for state machine
 class PlannerState(Enum):
     WAIT_FOR_OBJECTS_TO_SETTLE = 1
-    PICKING_FROM_X_BIN = 2
-    PICKING_FROM_Y_BIN = 3
-    GO_HOME = 4
+    GO_HOME = 2
+    PICKING_FROM_X_BIN = 3
+    PICKING_FROM_Y_BIN = 4
     PICKING_FROM_Z_BIN = 5
+
+tasks = ["chicken", "bread", "chicken", "bread"]
+so_far = [False, False, False]
+idx = -1
+
+states = {
+    "bread": PlannerState.PICKING_FROM_X_BIN,
+    "chicken": PlannerState.PICKING_FROM_Y_BIN,
+}
+
+mode_to_str = {states[key]: key for key in states}
 
 
 class Planner(LeafSystem):
@@ -118,7 +129,7 @@ class Planner(LeafSystem):
         # For GoHome mode.
         num_positions = 7
         self._iiwa_position_index = self.DeclareVectorInputPort(
-            "mobile_iiwa_position", num_positions
+            "iiwa_position", num_positions
         ).get_index()
         self.DeclareAbstractOutputPort(
             "control_mode",
@@ -135,7 +146,7 @@ class Planner(LeafSystem):
             AbstractValue.Make(PiecewisePolynomial())
         )
         self.DeclareVectorOutputPort(
-            "mobile_iiwa_position_command", num_positions, self.CalcIiwaPosition
+            "iiwa_position_command", num_positions, self.CalcIiwaPosition
         )
         self.DeclareInitializationDiscreteUpdateEvent(self.Initialize)
 
@@ -223,6 +234,8 @@ class Planner(LeafSystem):
 
     def GoHome(self, context, state):
         print("Replanning due to large tracking error.")
+        global idx
+        idx -= 1
         state.get_mutable_abstract_state(int(self._mode_index)).set_value(
             PlannerState.GO_HOME
         )
@@ -245,76 +258,39 @@ class Planner(LeafSystem):
             ]
         }
 
+        global tasks, so_far, states, idx
+        idx += 1
+        if idx >= len(tasks):
+            assert False, "done with all the tasks!"
+        mode = states[tasks[idx]]
+
         # TODO: CAN MODIFY TO WORK WITH DIFFERENT BINS WITH DIFFERENT THINGS
         cost = np.inf
         retry = False
-        global got_first_bread, got_second_bread, got_filling
         for i in range(5):
-            # Y == chicken
-            # X == bread
-
-            print(PlannerState, got_first_bread, got_second_bread, got_filling)
-
             # right now, default to if tried, succeeded. Can update later
             if mode == PlannerState.PICKING_FROM_Y_BIN:
-                if retry:
-                    # if we have to retry, don't add any new logic
-                    cost, X_G["pick"] = self.get_input_port(self._y_bin_grasp_index).Eval(
-                        context
-                    )
-                else:
-                    cost, X_G["pick"] = self.get_input_port(self._x_bin_grasp_index).Eval(
-                        context
-                    )
-                    got_filling = True
-                    mode = PlannerState.PICKING_FROM_X_BIN
+                print("going for y...")
+                cost, X_G["pick"] = self.get_input_port(self._y_bin_grasp_index).Eval(
+                    context
+                )
             elif mode == PlannerState.PICKING_FROM_X_BIN:
-                # if we have to retry, don't add any new logic
-                if retry: 
-                    cost, X_G["pick"] = self.get_input_port(self._x_bin_grasp_index).Eval(
-                        context
-                    )
-                    break
-                if got_first_bread:
-                    # we're done
-                    mode = PlannerState.GO_HOME
-                    got_second_bread = True
-                    assert False, "Done!"
-                else:
-                    got_first_bread = True
-                    mode = PlannerState.PICKING_FROM_Y_BIN
-                    cost, X_G["pick"] = self.get_input_port(self._y_bin_grasp_index).Eval(
-                        context
-                    )
- 
-            else:
-                mode = PlannerState.PICKING_FROM_X_BIN
+                print("going for x from x...")
                 cost, X_G["pick"] = self.get_input_port(self._x_bin_grasp_index).Eval(
                     context
                 )
- 
-                    
-            # if mode == PlannerState.PICKING_FROM_Y_BIN:
-            #     cost, X_G["pick"] = self.get_input_port(self._y_bin_grasp_index).Eval(
-            #         context
-            #     )
-            #     if np.isinf(cost):
-            #         mode = PlannerState.PICKING_FROM_X_BIN
-            # else:
-            #     # cost, X_G["pick"] = self.get_input_port(self._x_bin_grasp_index).Eval(
-            #     #     context
-            #     # )
-            #     # if np.isinf(cost):
-            #     if True:
-            #         mode = PlannerState.PICKING_FROM_Y_BIN
-            #     # else:
-            #     #     mode = PlannerState.PICKING_FROM_X_BIN
-
+            else:
+                print("going for x...")
+                cost, X_G["pick"] = self.get_input_port(self._x_bin_grasp_index).Eval(
+                    context
+                )
             if not np.isinf(cost):
                 break
             else:
                 retry = True
 
+        if np.isinf(cost):
+            input(f"Assistance is required! Please help me pick up the {tasks[idx]}. ")
         assert not np.isinf(
             cost
         ), "Could not find a valid grasp in either bin after 5 attempts"
@@ -326,39 +302,18 @@ class Planner(LeafSystem):
         # TODO: CAN BE CHANGED TO X AND Y BINS
         
         # placing on the mat...
+        X_G["place"] = RigidTransform(
+            RollPitchYaw(-np.pi / 2, 0, 0),
+            [-0.01, -0.25, 0.15],
+        )
 
-        # TODO: we'll likely want it to increase as the sandwich size increases
-        if mode == PlannerState.PICKING_FROM_X_BIN:
-            X_G["place"] = RigidTransform(
-                RollPitchYaw(-np.pi / 2, 0, 0),
-                [-0.01, -0.25, 0.15],
-                # 0, -0.25, -0.015
-            )
-        else:
-            # making the toppings a bit closer since it bounces as is
-            X_G["place"] = RigidTransform(
-                RollPitchYaw(-np.pi / 2, 0, 0),
-                [-0.01, -0.25, 0.12],
-                # 0, -0.25, -0.015
-            )
- 
-
-        # if mode == PlannerState.PICKING_FROM_X_BIN:
-        #     # Place in Y bin:
-        #     X_G["place"] = RigidTransform(
-        #         RollPitchYaw(-np.pi / 2, 0, 0),
-        #         [rng.uniform(-0.25, 0.15), rng.uniform(-0.6, -0.4), 0.3],
-        #     )
-        # else:
-        #     # Place in X bin:
-        #     X_G["place"] = RigidTransform(
-        #         RollPitchYaw(-np.pi / 2, 0, np.pi / 2),
-        #         [rng.uniform(0.35, 0.65), rng.uniform(-0.12, 0.28), 0.3],
-        #     )
-
+        # NOTE: We do NOT want this (since it's pick-specific)
+        # INSTEAD we want to specify keypoints probably then have the robot execute the trajectory
+        # TODO: Another place to update to be conditioned on the mustard
         X_G, times = MakeGripperFrames(X_G, t0=context.get_time())
+        print(X_G)
         print(
-            f"Planned {times['postplace'] - times['initial']} second trajectory in mode {mode} at time {context.get_time()}."
+            f"Planned {times['postplace'] - times['initial']} second trajectory in mode {mode}—{mode_to_str[mode]} at time {context.get_time()}."
         )
         state.get_mutable_abstract_state(int(self._times_index)).set_value(times)
 
@@ -368,8 +323,12 @@ class Planner(LeafSystem):
             AddMeshcatTriad(meshcat, "X_Gpick", X_PT=X_G["pick"])
             AddMeshcatTriad(meshcat, "X_Gplace", X_PT=X_G["place"])
 
+        # TODO: Add some sort of conditional for if it's a mustard or something
+
         traj_X_G = MakeGripperPoseTrajectory(X_G, times)
         traj_wsg_command = MakeGripperCommandTrajectory(times)
+
+        print(traj_X_G, traj_wsg_command)
 
         state.get_mutable_abstract_state(int(self._traj_X_G_index)).set_value(traj_X_G)
         state.get_mutable_abstract_state(int(self._traj_wsg_index)).set_value(
@@ -464,58 +423,32 @@ def clutter_clearing_demo():
     builder = DiagramBuilder()
 
     scenario = load_scenario(
-        filename=FindResource(f"{full_path}/clutter.scenarios.yaml"),
+        filename=FindResource(f"{full_path}/_clutter.scenarios.yaml"),
         scenario_name="Clutter",
     )
     model_directives = """
 directives:
 """
-    NUM_CHICKEN = 10
+    NUM_CHICKEN = 1
     for i in range(NUM_CHICKEN):
         # porting over previous work
-        ranges = {"x": -0.5, "y": -0.5, "z": -0.05}
+        ranges = {"x": -0.5, "y": -0.5, "z": 0.15}
         name = "foam_chicken"
         num = i
         model_directives += f"""
 - add_model:
-    name: {name}_{num}
-    file: file://{full_path}{name}.sdf
+    name: ycb{i}
+    file: package://manipulation/hydro/006_mustard_bottle.sdf
     default_free_body_pose:
-        base_link:
+        base_link_mustard:
             translation: [{ranges['x'] + np.random.randint(-10, 10)/50}, {ranges['y'] + np.random.randint(-10, 10)/50}, {ranges['z'] + np.random.randint(10)/10}]
 """
-
-    NUM_BREAD = 10
-    for num in range(NUM_BREAD):
-        ranges = {"x": 0.5, "y": -0.5, "z": -0.05}
-        name = "Pound_Cake_OBJ"
-        model_directives += f"""
-- add_model:
-    name: {name}_{num}
-    file: file://{full_path}{name}.sdf
-    default_free_body_pose:
-        base_link:
-            translation: [{ranges['x'] + np.random.randint(-10, 10)/50}, {ranges['y'] + np.random.randint(-10, 10)/50}, {ranges['z'] + np.random.randint(10)/10}]
-"""
-        '''
-        model_directives += f"""
-- add_model:
-    name: {name}_{num}
-    file: file://{full_path}__{name}.sdf
-    default_free_body_pose:
-        {name}:
-            translation: [{0.5 + np.random.randint(-10, 10)/50}, {-0.6 + np.random.randint(-10, 10)/50}, {0.01}] 
-            rotation: !Rpy {{ deg: [{np.random.randint(0, 90)}, {np.random.randint(0, 90)}, {np.random.randint(0, 90)}] }}
-"""
-        '''
 
     scenario = add_directives(scenario, data=model_directives)
 
     station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
     to_point_cloud = AddPointClouds(scenario=scenario, station=station, builder=builder)
     plant = station.GetSubsystemByName("plant")
-    # print(plant.GetStateNames())
-    # print(plant.GetActuatorNames())
 
     ### CREATE GRASP SELECTOR FOR EACH PORT
     y_bin_grasp_selector = builder.AddSystem(
@@ -625,39 +558,39 @@ directives:
         planner.GetInputPort("wsg_state"),
     )
     builder.Connect(
-        station.GetOutputPort("mobile_iiwa.position_measured"),
-        planner.GetInputPort("mobile_iiwa_position"),
+        station.GetOutputPort("iiwa.position_measured"),
+        planner.GetInputPort("iiwa_position"),
     )
 
     robot = station.GetSubsystemByName(
-        "mobile_iiwa.controller"
+        "iiwa.controller"
     ).get_multibody_plant_for_control()
 
     # Set up differential inverse kinematics.
     diff_ik = AddIiwaDifferentialIK(builder, robot)
     builder.Connect(planner.GetOutputPort("X_WG"), diff_ik.get_input_port(0))
     builder.Connect(
-        station.GetOutputPort("mobile_iiwa.state_estimated"),
+        station.GetOutputPort("iiwa.state_estimated"),
         diff_ik.GetInputPort("robot_state"),
     )
     builder.Connect(
         planner.GetOutputPort("reset_diff_ik"),
         diff_ik.GetInputPort("use_robot_state"),
     )
-
+     
     builder.Connect(
         planner.GetOutputPort("wsg_position"),
         station.GetInputPort("wsg.position"),
     )
-
+    
     # The DiffIK and the direct position-control modes go through a PortSwitch
     switch = builder.AddSystem(PortSwitch(7))
     builder.Connect(diff_ik.get_output_port(), switch.DeclareInputPort("diff_ik"))
     builder.Connect(
-        planner.GetOutputPort("mobile_iiwa_position_command"),
+        planner.GetOutputPort("iiwa_position_command"),
         switch.DeclareInputPort("position"),
     )
-    builder.Connect(switch.get_output_port(), station.GetInputPort("mobile_iiwa.position"))
+    builder.Connect(switch.get_output_port(), station.GetInputPort("iiwa.position"))
     builder.Connect(
         planner.GetOutputPort("control_mode"),
         switch.get_port_selector_input_port(),

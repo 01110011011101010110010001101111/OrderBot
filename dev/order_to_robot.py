@@ -6,6 +6,7 @@ import numpy as np
 from pydrake.all import (
     AbstractValue,
     AddMultibodyPlantSceneGraph,
+    CameraConfig,
     Concatenate,
     DiagramBuilder,
     InputPortIndex,
@@ -17,6 +18,7 @@ from pydrake.all import (
     PointCloud,
     PortSwitch,
     RandomGenerator,
+    RgbdSensor,
     RigidTransform,
     RollPitchYaw,
     Simulator,
@@ -41,6 +43,8 @@ from manipulation.station import (
 )
 
 from kinematics import GraspSelector
+
+import matplotlib.pyplot as plt
 
 full_path = "/Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/"
 
@@ -526,6 +530,7 @@ directives:
 
     station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
     to_point_cloud = AddPointClouds(scenario=scenario, station=station, builder=builder)
+    print(to_point_cloud["camera0"])
     plant = station.GetSubsystemByName("plant")
 
     ### CREATE GRASP SELECTOR FOR EACH PORT
@@ -584,7 +589,6 @@ directives:
         station.GetOutputPort("body_poses"),
         x_bin_grasp_selector.GetInputPort("body_poses"),
     )
-
     ## trying to add the z bin
 
     # z_bin_grasp_selector = builder.AddSystem(
@@ -674,13 +678,65 @@ directives:
         switch.get_port_selector_input_port(),
     )
 
+    ### Exp. Stuff!
+    theta = np.pi
+    phi = np.pi
+    camera_distance = 0
+    camera_config = CameraConfig()
+    # camera_config.width = camera_width
+    # camera_config.height = camera_heigh
+    _, depth_camera = camera_config.MakeCameras()
+    transform = RigidTransform(RollPitchYaw(0, 0, theta).ToRotationMatrix(
+        ) @ RollPitchYaw(phi, 0, 0).ToRotationMatrix(), np.zeros(3)) @ RigidTransform([0, 0, -camera_distance])
+    camera_sys = builder.AddSystem(RgbdSensor(
+        parent_id=plant.GetBodyFrameIdIfExists(
+            plant.world_frame().body().index()),
+        X_PB=transform,
+        depth_camera=depth_camera, # plant.GetModelInstanceByName("camera0")
+    ))
+
+    name = "camera0"
+
+    builder.Connect(
+        station.GetOutputPort(
+            "query_object"), camera_sys.query_object_input_port()
+    )
+    builder.ExportOutput(
+        camera_sys.color_image_output_port(), f"{name}.rgb_image"
+    )
+    builder.ExportOutput(
+        camera_sys.depth_image_32F_output_port(), f"{name}.depth_image"
+    )
+    builder.ExportOutput(
+        camera_sys.label_image_output_port(), f"{name}.label_image"
+    )
+
+    # builder.Connect(
+    #     station.GetOutputPort("camera0.rgb_image"), camera_sys.query_object_input_port()
+    # )
+    # builder.ExportOutput(
+    #     camera_sys.color_image_output_port(), f"{name}.rgb_image"
+    # )
+
+    ### Exp. Stuff!
+
     visualizer = MeshcatVisualizer.AddToBuilder(
         builder, station.GetOutputPort("query_object"), meshcat
     )
+    # AddRgbdSensors(builder, plant, scene_graph)
     diagram = builder.Build()
+
 
     simulator = Simulator(diagram)
     context = simulator.get_context()
+
+    # print(context)
+
+    print(station.GetOutputPort("camera0.rgb_image").Eval(context).data)
+
+    rgb_im = station.GetOutputPort("camera0.rgb_image").Eval(context).data
+    plt.imshow(rgb_im[:, :, 0:3])
+    plt.show()
 
     # plant_context = plant.GetMyMutableContextFromRoot(context)
     # z = 0.2
