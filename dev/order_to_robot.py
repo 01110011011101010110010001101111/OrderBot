@@ -679,47 +679,67 @@ directives:
     )
 
     ### Exp. Stuff!
-    theta = np.pi
-    phi = np.pi
-    camera_distance = 0
-    camera_config = CameraConfig()
-    # camera_config.width = camera_width
-    # camera_config.height = camera_heigh
-    _, depth_camera = camera_config.MakeCameras()
-    transform = RigidTransform(RollPitchYaw(0, 0, theta).ToRotationMatrix(
-        ) @ RollPitchYaw(phi, 0, 0).ToRotationMatrix(), np.zeros(3)) @ RigidTransform([0, 0, -camera_distance])
-    camera_sys = builder.AddSystem(RgbdSensor(
-        parent_id=plant.GetBodyFrameIdIfExists(
-            plant.world_frame().body().index()),
-        X_PB=transform,
-        depth_camera=depth_camera, # plant.GetModelInstanceByName("camera0")
-    ))
+    """
+    Start of Exp. Stuff!!!!!
+    """
+    # builder = DiagramBuilder()
 
-    name = "camera0"
-
-    builder.Connect(
-        station.GetOutputPort(
-            "query_object"), camera_sys.query_object_input_port()
-    )
-    builder.ExportOutput(
-        camera_sys.color_image_output_port(), f"{name}.rgb_image"
-    )
-    builder.ExportOutput(
-        camera_sys.depth_image_32F_output_port(), f"{name}.depth_image"
-    )
-    builder.ExportOutput(
-        camera_sys.label_image_output_port(), f"{name}.label_image"
-    )
-
-    # builder.Connect(
-    #     station.GetOutputPort("camera0.rgb_image"), camera_sys.query_object_input_port()
+    # # Create the physics engine + scene graph.
+    # plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.0)
+    # parser = Parser(plant)
+    # ConfigureParser(parser)
+    # parser.AddModelsFromUrl(
+    #     "package://manipulation/mustard_w_cameras.dmd.yaml"
     # )
-    # builder.ExportOutput(
-    #     camera_sys.color_image_output_port(), f"{name}.rgb_image"
+    # plant.Finalize()
+
+    # # Add a visualizer just to help us see the object.
+    # use_meshcat = False
+    # if use_meshcat:
+    #     meshcat = builder.AddSystem(MeshcatVisualizer(scene_graph))
+    #     builder.Connect(
+    #         scene_graph.get_query_output_port(),
+    #         meshcat.get_geometry_query_input_port(),
+    #     )
+
+    # AddRgbdSensors(builder, plant, scene_graph)
+
+    # diagram = builder.Build()
+    # diagram.set_name("depth_camera_demo_system")
+
+    # context = diagram.CreateDefaultContext()
+
+    # # setup
+    # meshcat.SetProperty("/Background", "visible", False)
+
+    # # getting data
+    # point_cloud = diagram.GetOutputPort("camera0_point_cloud").Eval(
+    #     context
     # )
+    # depth_im_read = (
+    #     diagram.GetOutputPort("camera0_depth_image")
+    #     .Eval(context)
+    #     .data.squeeze()
+    # )
+    # depth_im = deepcopy(depth_im_read)
+    # depth_im[depth_im == np.inf] = 10.0
+    # label_im = (
+    #     diagram.GetOutputPort("camera0_label_image")
+    #     .Eval(context)
+    #     .data.squeeze()
+    # )
+    # rgb_im = (
+    #     diagram.GetOutputPort("camera0_rgb_image").Eval(context).data
+    # )
+
+    # print(rgb_im)
+
+    visualizer = MeshcatVisualizer.AddToBuilder(
+        builder, station.GetOutputPort("query_object"), meshcat
+    )
+    builder.ExportOutput(station.GetOutputPort('camera3.rgb_image'), 'camera3.rgb_image')
 
     ### Exp. Stuff!
-
     visualizer = MeshcatVisualizer.AddToBuilder(
         builder, station.GetOutputPort("query_object"), meshcat
     )
@@ -732,11 +752,11 @@ directives:
 
     # print(context)
 
-    print(station.GetOutputPort("camera0.rgb_image").Eval(context).data)
+    # print(station.GetOutputPort("camera0.rgb_image").Eval(context).data)
 
-    rgb_im = station.GetOutputPort("camera0.rgb_image").Eval(context).data
-    plt.imshow(rgb_im[:, :, 0:3])
-    plt.show()
+    # rgb_im = station.GetOutputPort("camera0.rgb_image").Eval(context).data
+    # plt.imshow(rgb_im[:, :, 0:3])
+    # plt.show()
 
     # plant_context = plant.GetMyMutableContextFromRoot(context)
     # z = 0.2
@@ -750,6 +770,11 @@ directives:
 
     simulator.AdvanceTo(0.1)
     meshcat.Flush()  # Wait for the large object meshes to get to meshcat.
+
+    rgb_im = diagram.GetOutputPort("camera3.rgb_image").Eval(context).data
+    plt.imshow(rgb_im[:, :, 0:3])
+    plt.show()
+
 
     if running_as_notebook:
         simulator.set_target_realtime_rate(1.0)
