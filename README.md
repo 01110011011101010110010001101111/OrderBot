@@ -1,5 +1,9 @@
 # 6.4210-Final-Project
 
+## Some Notes
+
+We want the pipeline to be assigning the foods based on the location
+
 ## Update (Project Check-in 2)
 
 - Finished the MVP (can make a sandwich!)

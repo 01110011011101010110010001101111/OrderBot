@@ -1,2 +1,4 @@
 dev/__pycache__/
 dev/keys.py
+data/
+prep/vision/

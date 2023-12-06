@@ -4,7 +4,7 @@ Clutter: &Clutter
       file: file:///Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/two_bins_w_cameras.dmd.yaml
 
   - add_model:
-      name: iiwa
+      name: mobile_iiwa
       file: package://manipulation/mobile_iiwa14_primitive_collision.urdf
       default_joint_positions:
           iiwa_joint_1: [-1.57]
@@ -18,7 +18,7 @@ Clutter: &Clutter
       name: wsg
       file: package://manipulation/hydro/schunk_wsg_50_with_tip.sdf
   - add_weld:
-      parent: iiwa::iiwa_link_7
+      parent: mobile_iiwa::iiwa_link_7
       child: wsg::body
       X_PC:
           translation: [0, 0, 0.09]
@@ -62,7 +62,7 @@ Clutter: &Clutter
         base_frame: camera5::base
 
   model_drivers:
-      iiwa+wsg: !InverseDynamicsDriver {}
+      mobile_iiwa+wsg: !InverseDynamicsDriver {}
 
 Mustard:
   <<: *Clutter
