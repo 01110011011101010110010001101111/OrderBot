@@ -47,7 +47,8 @@ from kinematics import GraspSelector
 import matplotlib.pyplot as plt
 
 full_path = "/Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/"
-
+diagram = None
+context = None
 
 class NoDiffIKWarnings(logging.Filter):
     def filter(self, record):
@@ -84,6 +85,52 @@ states = {
 
 mode_to_str = {states[key]: key for key in states}
 
+def close_to(val, col_set, noise = 2):
+    close_to_item = False
+    for r_noise in range(-noise, noise):
+        for g_noise in range(-noise, noise):
+            for b_noise in range(-noise, noise):
+                if (val[0] + r_noise, val[1] + g_noise, val[2] + b_noise) in col_set:
+                    close_to_item = True
+    return close_to_item
+ 
+def assign_to_bins():
+    bin1 = check_image("camera0")
+    bin2 = check_image("camera4")
+
+    # TODO: HANDLE IF THIS IS NOT THE CASE!
+    assert len(bin1) == 1
+    assert len(bin2) == 1
+
+    states[bin1[0]] = PlannerState.PICKING_FROM_Y_BIN
+    states[bin2[0]] = PlannerState.PICKING_FROM_X_BIN
+
+    print(states)
+
+
+def check_image(camera_name):
+    # to start, we'll create a very basic vision thing. we'll just check the colour of the items
+    rgb_im = diagram.GetOutputPort(f"{camera_name}.rgb_image").Eval(context).data
+    rgb_im = rgb_im[:, :, 0:3]
+    col = set()
+    for arr in rgb_im:
+        for pix in arr:
+            col.add(tuple(pix))
+    # print((79, 3, 79) in col)
+    # print((116, 97, 101) in col)
+    # print(col)
+    # plt.imshow(rgb_im)
+    # plt.show()
+    # print(close_to((116, 97, 101), col))
+    pixel_to_item = {
+        (143, 127, 130): "bread",
+        (62, 17, 35): "chicken",
+    }
+    items = []
+    for pixel in pixel_to_item:
+        if close_to(pixel, col):
+            items.append(pixel_to_item[pixel])
+    return items
 
 class Planner(LeafSystem):
     def __init__(self, plant):
@@ -261,6 +308,8 @@ class Planner(LeafSystem):
         if idx >= len(tasks):
             assert False, "done with all the tasks!"
         mode = states[tasks[idx]]
+
+        check_image("camera4")
 
         # TODO: CAN MODIFY TO WORK WITH DIFFERENT BINS WITH DIFFERENT THINGS
         cost = np.inf
@@ -475,8 +524,9 @@ class Planner(LeafSystem):
 
         output.SetFromVector(traj_q.value(context.get_time()))
 
-
 def clutter_clearing_demo():
+    global diagram, context
+
     meshcat.Delete()
     builder = DiagramBuilder()
 
@@ -530,7 +580,7 @@ directives:
 
     station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
     to_point_cloud = AddPointClouds(scenario=scenario, station=station, builder=builder)
-    print(to_point_cloud["camera0"])
+    # print(to_point_cloud["camera0"])
     plant = station.GetSubsystemByName("plant")
 
     ### CREATE GRASP SELECTOR FOR EACH PORT
@@ -737,7 +787,8 @@ directives:
     visualizer = MeshcatVisualizer.AddToBuilder(
         builder, station.GetOutputPort("query_object"), meshcat
     )
-    builder.ExportOutput(station.GetOutputPort('camera3.rgb_image'), 'camera3.rgb_image')
+    builder.ExportOutput(station.GetOutputPort("camera4.rgb_image"), "camera4.rgb_image")
+    builder.ExportOutput(station.GetOutputPort("camera0.rgb_image"), "camera0.rgb_image")
 
     ### Exp. Stuff!
     visualizer = MeshcatVisualizer.AddToBuilder(
@@ -771,9 +822,12 @@ directives:
     simulator.AdvanceTo(0.1)
     meshcat.Flush()  # Wait for the large object meshes to get to meshcat.
 
-    rgb_im = diagram.GetOutputPort("camera3.rgb_image").Eval(context).data
-    plt.imshow(rgb_im[:, :, 0:3])
-    plt.show()
+    # rgb_im = diagram.GetOutputPort("camera3.rgb_image").Eval(context).data
+    # plt.imshow(rgb_im[:, :, 0:3])
+    # plt.show()
+
+    # check_image("camera0")
+    assign_to_bins()
 
 
     if running_as_notebook:
