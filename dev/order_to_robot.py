@@ -79,11 +79,11 @@ so_far = [False, False, False]
 idx = -1
 
 states = {
-    "bread": PlannerState.PICKING_FROM_X_BIN,
-    "chicken": PlannerState.PICKING_FROM_Y_BIN,
+    # "bread": PlannerState.PICKING_FROM_X_BIN,
+    # "chicken": PlannerState.PICKING_FROM_Y_BIN,
 }
 
-mode_to_str = {states[key]: key for key in states}
+# mode_to_str = {states[key]: key for key in states}
 
 def close_to(val, col_set, noise = 2):
     close_to_item = False
@@ -100,7 +100,7 @@ def assign_to_bins():
 
     # TODO: HANDLE IF THIS IS NOT THE CASE!
     assert len(bin1) == 1
-    assert len(bin2) == 1
+    assert len(bin2) == 1, f"seeing {len(bin2)} items in bin2!"
 
     states[bin1[0]] = PlannerState.PICKING_FROM_Y_BIN
     states[bin2[0]] = PlannerState.PICKING_FROM_X_BIN
@@ -424,7 +424,7 @@ class Planner(LeafSystem):
 
         X_G, times = MakeGripperFrames(X_G, t0=context.get_time())
         print(
-            f"Planned {times['postplace'] - times['initial']} second trajectory in mode {mode}—{mode_to_str[mode]} at time {context.get_time()}."
+            f"Planned {times['postplace'] - times['initial']} second trajectory in mode {mode} at time {context.get_time()}."
         )
         state.get_mutable_abstract_state(int(self._times_index)).set_value(times)
 
