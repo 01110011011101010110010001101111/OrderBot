@@ -41,22 +41,19 @@ class OrderToFoods:
     def execute(self, order):
         return set(self.extract_food_items(order)) - set(self.find_modifier(order))
 
-food_opts = ["chicken", "sandwich"]
+# food_opts = ["chicken", "sandwich"]
 
-def get_order():
+def get_order(food_opts):
     order = (input("What would you like to order? ")).lower()
     nlp = OrderToFoods()
     plan = []
 
     proposed_foods = nlp.execute(order)
 
-    is_sandwich = False
+    is_sandwich = "sandwich" in order
     for food in food_opts:
         if food in proposed_foods:
-            if food == "sandwich":
-                is_sandwich = True
-            else:
-                plan.append(food)
+            plan.append(food)
     
     # if it is a sandwich, add the bread as well
     if is_sandwich:
@@ -65,4 +62,4 @@ def get_order():
 
     return plan
 
-print(get_order())
+# print(get_order())

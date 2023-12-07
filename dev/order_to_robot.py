@@ -43,6 +43,7 @@ from manipulation.station import (
 )
 
 from kinematics import GraspSelector
+from order_to_plan import get_order
 
 import matplotlib.pyplot as plt
 
@@ -74,8 +75,7 @@ class PlannerState(Enum):
     PICKING_FROM_Y_BIN = 4
     PICKING_FROM_Z_BIN = 5
 
-tasks = ["bread", "chicken", "bread"]
-so_far = [False, False, False]
+tasks = [] # ["bread", "chicken", "bread"]
 idx = -1
 
 states = {
@@ -95,6 +95,7 @@ def close_to(val, col_set, noise = 2):
     return close_to_item
  
 def assign_to_bins():
+    global tasks 
     bin1 = check_image("camera0")
     bin2 = check_image("camera4")
 
@@ -105,8 +106,11 @@ def assign_to_bins():
     states[bin1[0]] = PlannerState.PICKING_FROM_Y_BIN
     states[bin2[0]] = PlannerState.PICKING_FROM_X_BIN
 
-    print(states)
+    food_opts = [bin1[0], bin2[0]]
 
+    print(food_opts)
+    tasks = get_order(food_opts)
+    print(tasks)
 
 def check_image(camera_name):
     # to start, we'll create a very basic vision thing. we'll just check the colour of the items
@@ -303,7 +307,7 @@ class Planner(LeafSystem):
             ]
         }
 
-        global tasks, so_far, states, idx
+        global tasks, states, idx
         idx += 1
         if idx >= len(tasks):
             assert False, "done with all the tasks!"

@@ -620,24 +620,24 @@ directives:
     #     z_bin_grasp_selector.get_output_port(),
     #     planner.GetInputPort("z_bin_grasp"),
     # )
-    builder.Connect(
-        station.GetOutputPort("wsg.state_measured"),
-        planner.GetInputPort("wsg_state"),
-    )
-    builder.Connect(
-        station.GetOutputPort("mobile_iiwa.position_measured"),
-        planner.GetInputPort("mobile_iiwa_position"),
-    )
+    # builder.Connect(
+    #     station.GetOutputPort("wsg.state_measured"),
+    #     planner.GetInputPort("wsg_state"),
+    # )
+    # builder.Connect(
+    #     station.GetOutputPort("mobile_iiwa.position_measured"),
+    #     planner.GetInputPort("mobile_iiwa_position"),
+    # )
 
     robot = station.GetSubsystemByName(
-        "mobile_iiwa.controller"
+        "mobile_iiwa+wsg.controller"
     ).get_multibody_plant_for_control()
 
     # Set up differential inverse kinematics.
     diff_ik = AddIiwaDifferentialIK(builder, robot)
     builder.Connect(planner.GetOutputPort("X_WG"), diff_ik.get_input_port(0))
     builder.Connect(
-        station.GetOutputPort("mobile_iiwa.state_estimated"),
+        station.GetOutputPort("mobile_iiwa+wsg.state_estimated"),
         diff_ik.GetInputPort("robot_state"),
     )
     builder.Connect(

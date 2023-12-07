@@ -310,23 +310,24 @@ class Planner(LeafSystem):
         # NOTE: We do NOT want this (since it's pick-specific)
         # INSTEAD we want to specify keypoints probably then have the robot execute the trajectory
         # TODO: Another place to update to be conditioned on the mustard
-        X_G, times = MakeGripperFrames(X_G, t0=context.get_time())
+        X_G, times = MakeGripperFrames_Squeeze(X_G, t0=context.get_time())
         print(X_G)
-        print(
-            f"Planned {times['postplace'] - times['initial']} second trajectory in mode {mode}—{mode_to_str[mode]} at time {context.get_time()}."
-        )
+        # print(
+        #     f"Planned {times['postplace'] - times['initial']} second trajectory in mode {mode}—{mode_to_str[mode]} at time {context.get_time()}."
+        # )
         state.get_mutable_abstract_state(int(self._times_index)).set_value(times)
 
-        if False:  # Useful for debugging
-            AddMeshcatTriad(meshcat, "X_Oinitial", X_PT=X_O["initial"])
+        if True: # False:  # Useful for debugging
+            AddMeshcatTriad(meshcat, "X_Oinitial", X_PT=X_G["initial"])
             AddMeshcatTriad(meshcat, "X_Gprepick", X_PT=X_G["prepick"])
+            AddMeshcatTriad(meshcat, "X_Gpreplace", X_PT=X_G["preplace"])
             AddMeshcatTriad(meshcat, "X_Gpick", X_PT=X_G["pick"])
             AddMeshcatTriad(meshcat, "X_Gplace", X_PT=X_G["place"])
 
         # TODO: Add some sort of conditional for if it's a mustard or something
 
-        traj_X_G = MakeGripperPoseTrajectory(X_G, times)
-        traj_wsg_command = MakeGripperCommandTrajectory(times)
+        traj_X_G = MakeGripperPoseTrajectory_Squeeze(X_G, times)
+        traj_wsg_command = MakeGripperCommandTrajectory_Squeeze(times)
 
         print(traj_X_G, traj_wsg_command)
 
@@ -441,8 +442,9 @@ directives:
     file: package://manipulation/hydro/006_mustard_bottle.sdf
     default_free_body_pose:
         base_link_mustard:
-            translation: [{ranges['x'] + np.random.randint(-10, 10)/50}, {ranges['y'] + np.random.randint(-10, 10)/50}, {ranges['z'] + np.random.randint(10)/10}]
+            translation: [{ranges['x']}, {ranges['y']}, {ranges['z']}]
 """
+            # translation: [{ranges['x'] + np.random.randint(-10, 10)/50}, {ranges['y'] + np.random.randint(-10, 10)/50}, {ranges['z'] + np.random.randint(10)/10}]
 
     scenario = add_directives(scenario, data=model_directives)
 
