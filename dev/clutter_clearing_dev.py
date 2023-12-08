@@ -32,6 +32,7 @@ from manipulation.pick import (
     MakeGripperFrames,
     MakeGripperPoseTrajectory,
 )
+# TODO: READ INTO AddIiwaDifferentialIK AND FIX IT TO WORK WITH IIWA
 from manipulation.scenarios import AddIiwaDifferentialIK, ycb
 from manipulation.station import (
     AddPointClouds,

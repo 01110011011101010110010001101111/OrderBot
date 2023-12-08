@@ -99,8 +99,10 @@ def assign_to_bins():
     bin1 = check_image("camera0")
     bin2 = check_image("camera4")
 
+    print(bin1, bin2)
+
     # TODO: HANDLE IF THIS IS NOT THE CASE!
-    assert len(bin1) == 1
+    assert len(bin1) == 1, f"seeing {len(bin1)} items in bin1!"
     assert len(bin2) == 1, f"seeing {len(bin2)} items in bin2!"
 
     states[bin1[0]] = PlannerState.PICKING_FROM_Y_BIN
@@ -123,8 +125,8 @@ def check_image(camera_name):
     # print((79, 3, 79) in col)
     # print((116, 97, 101) in col)
     # print(col)
-    # plt.imshow(rgb_im)
-    # plt.show()
+    plt.imshow(rgb_im)
+    plt.show()
     # print(close_to((116, 97, 101), col))
     pixel_to_item = {
         (143, 127, 130): "bread",
@@ -209,6 +211,7 @@ class Planner(LeafSystem):
 
         if mode == PlannerState.WAIT_FOR_OBJECTS_TO_SETTLE:
             if context.get_time() - times["initial"] > 1.0:
+                assign_to_bins()
                 self.Plan(context, state)
             return
         elif mode == PlannerState.GO_HOME:
@@ -313,7 +316,7 @@ class Planner(LeafSystem):
             assert False, "done with all the tasks!"
         mode = states[tasks[idx]]
 
-        check_image("camera4")
+        # check_image("camera4")
 
         # TODO: CAN MODIFY TO WORK WITH DIFFERENT BINS WITH DIFFERENT THINGS
         cost = np.inf
@@ -401,14 +404,14 @@ class Planner(LeafSystem):
         if mode == PlannerState.PICKING_FROM_X_BIN:
             X_G["place"] = RigidTransform(
                 RollPitchYaw(-np.pi / 2, 0, 0),
-                [-0.01, -0.25, 0.15],
+                [-0.03, -0.25, 0.15],
                 # 0, -0.25, -0.015
             )
         else:
             # making the toppings a bit closer since it bounces as is
             X_G["place"] = RigidTransform(
                 RollPitchYaw(-np.pi / 2, 0, 0),
-                [-0.01, -0.25, 0.12],
+                [-0.03, -0.25, 0.12],
                 # 0, -0.25, -0.015
             )
  
@@ -541,10 +544,20 @@ def clutter_clearing_demo():
     model_directives = """
 directives:
 """
+    
+    bin1 = {"x": -0.5, "y": -0.5, "z": -0.05}
+    bin2 = {"x": 0.5, "y": -0.5, "z": -0.05}
+    if np.random.uniform() < 0.5:
+        chicken_range = bin1
+        bread_range = bin2
+    else:
+        chicken_range = bin2
+        bread_range = bin1
+
     NUM_CHICKEN = 10
     for i in range(NUM_CHICKEN):
         # porting over previous work
-        ranges = {"x": -0.5, "y": -0.5, "z": -0.05}
+        ranges = chicken_range # {"x": -0.5, "y": -0.5, "z": -0.05}
         name = "foam_chicken"
         num = i
         model_directives += f"""
@@ -558,7 +571,7 @@ directives:
 
     NUM_BREAD = 10
     for num in range(NUM_BREAD):
-        ranges = {"x": 0.5, "y": -0.5, "z": -0.05}
+        ranges = bread_range # {"x": 0.5, "y": -0.5, "z": -0.05}
         name = "Pound_Cake_OBJ"
         model_directives += f"""
 - add_model:
@@ -831,7 +844,7 @@ directives:
     # plt.show()
 
     # check_image("camera0")
-    assign_to_bins()
+    # assign_to_bins()
 
 
     if running_as_notebook:
