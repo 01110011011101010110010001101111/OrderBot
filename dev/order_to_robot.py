@@ -77,6 +77,7 @@ class PlannerState(Enum):
 
 tasks = [] # ["bread", "chicken", "bread"]
 idx = -1
+ordered = False
 
 states = {
     # "bread": PlannerState.PICKING_FROM_X_BIN,
@@ -95,7 +96,7 @@ def close_to(val, col_set, noise = 2):
     return close_to_item
  
 def assign_to_bins():
-    global tasks 
+    global tasks, ordered 
     bin1 = check_image("camera0")
     bin2 = check_image("camera4")
 
@@ -113,6 +114,8 @@ def assign_to_bins():
     print(food_opts)
     tasks = get_order(food_opts)
     print(tasks)
+
+    ordered = True
 
 def check_image(camera_name):
     # to start, we'll create a very basic vision thing. we'll just check the colour of the items
@@ -204,6 +207,7 @@ class Planner(LeafSystem):
         self.DeclarePeriodicUnrestrictedUpdateEvent(0.1, 0.0, self.Update)
 
     def Update(self, context, state):
+        global ordered
         mode = context.get_abstract_state(int(self._mode_index)).get_value()
 
         current_time = context.get_time()
@@ -211,7 +215,8 @@ class Planner(LeafSystem):
 
         if mode == PlannerState.WAIT_FOR_OBJECTS_TO_SETTLE:
             if context.get_time() - times["initial"] > 1.0:
-                assign_to_bins()
+                if not ordered:
+                    assign_to_bins()
                 self.Plan(context, state)
             return
         elif mode == PlannerState.GO_HOME:

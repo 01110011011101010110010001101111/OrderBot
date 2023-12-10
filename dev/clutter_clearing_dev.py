@@ -33,7 +33,7 @@ from manipulation.pick import (
     MakeGripperPoseTrajectory,
 )
 # TODO: READ INTO AddIiwaDifferentialIK AND FIX IT TO WORK WITH IIWA
-from manipulation.scenarios import AddIiwaDifferentialIK, ycb
+from scenarios import AddIiwaDifferentialIK, ycb
 from manipulation.station import (
     AddPointClouds,
     MakeHardwareStation,
@@ -621,6 +621,7 @@ directives:
     #     z_bin_grasp_selector.get_output_port(),
     #     planner.GetInputPort("z_bin_grasp"),
     # )
+
     # builder.Connect(
     #     station.GetOutputPort("wsg.state_measured"),
     #     planner.GetInputPort("wsg_state"),
@@ -646,13 +647,13 @@ directives:
         diff_ik.GetInputPort("use_robot_state"),
     )
 
-    builder.Connect(
-        planner.GetOutputPort("wsg_position"),
-        station.GetInputPort("wsg.position"),
-    )
+    # builder.Connect(
+    #     planner.GetOutputPort("wsg_position"),
+    #     station.GetInputPort("wsg.position"),
+    # )
 
     # The DiffIK and the direct position-control modes go through a PortSwitch
-    switch = builder.AddSystem(PortSwitch(7))
+    switch = builder.AddSystem(PortSwitch(12))
     builder.Connect(diff_ik.get_output_port(), switch.DeclareInputPort("diff_ik"))
     builder.Connect(
         planner.GetOutputPort("mobile_iiwa_position_command"),
