@@ -409,14 +409,15 @@ class Planner(LeafSystem):
         if mode == PlannerState.PICKING_FROM_X_BIN:
             X_G["place"] = RigidTransform(
                 RollPitchYaw(-np.pi / 2, 0, 0),
-                [-0.03, -0.25, 0.15],
+                [-0.01, -0.25, 0.15],
+                # -0.01, -0.25, 
                 # 0, -0.25, -0.015
             )
         else:
             # making the toppings a bit closer since it bounces as is
             X_G["place"] = RigidTransform(
                 RollPitchYaw(-np.pi / 2, 0, 0),
-                [-0.03, -0.25, 0.12],
+                [-0.01, -0.25, 0.12],
                 # 0, -0.25, -0.015
             )
  
