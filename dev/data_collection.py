@@ -6,6 +6,7 @@ import numpy as np
 from pydrake.all import (
     AbstractValue,
     AddMultibodyPlantSceneGraph,
+    CameraConfig,
     Concatenate,
     DiagramBuilder,
     InputPortIndex,
@@ -17,6 +18,7 @@ from pydrake.all import (
     PointCloud,
     PortSwitch,
     RandomGenerator,
+    RgbdSensor,
     RigidTransform,
     RollPitchYaw,
     Simulator,
@@ -40,7 +42,6 @@ from manipulation.station import (
     load_scenario,
 )
 
-from kinematics import GraspSelector
 from mod_pick import (
     MakeGripperCommandTrajectory_Squeeze,
     MakeGripperFrames_Squeeze,
@@ -48,8 +49,15 @@ from mod_pick import (
 )
  
 
-full_path = "/Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/"
+from kinematics import GraspSelector
+from order_to_plan import get_order
 
+import matplotlib.pyplot as plt
+from datetime import datetime
+
+full_path = "/Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/"
+diagram = None
+context = None
 
 class NoDiffIKWarnings(logging.Filter):
     def filter(self, record):
@@ -75,18 +83,77 @@ class PlannerState(Enum):
     PICKING_FROM_Y_BIN = 4
     PICKING_FROM_Z_BIN = 5
 
-tasks = ["sauce", "chicken", "bread", "chicken", "bread"]
-so_far = [False, False, False]
+tasks = [] # ["bread", "chicken", "bread"]
 idx = -1
+ordered = False
 
 states = {
-    "bread": PlannerState.PICKING_FROM_X_BIN,
-    "chicken": PlannerState.PICKING_FROM_Y_BIN,
-    "sauce": PlannerState.PICKING_FROM_Z_BIN,
+    # "bread": PlannerState.PICKING_FROM_X_BIN,
+    # "chicken": PlannerState.PICKING_FROM_Y_BIN,
 }
 
-mode_to_str = {states[key]: key for key in states}
+# mode_to_str = {states[key]: key for key in states}
 
+def close_to(val, col_set, noise = 2):
+    close_to_item = False
+    for r_noise in range(-noise, noise):
+        for g_noise in range(-noise, noise):
+            for b_noise in range(-noise, noise):
+                if (val[0] + r_noise, val[1] + g_noise, val[2] + b_noise) in col_set:
+                    close_to_item = True
+    return close_to_item
+ 
+def assign_to_bins():
+    global tasks, ordered 
+    for num in range(6):
+        check_image(f"camera{num}")
+    bin1 = [] # check_image("camera0")
+    bin2 = [] # check_image("camera4")
+
+    print(bin1, bin2)
+
+    # TODO: HANDLE IF THIS IS NOT THE CASE!
+    assert len(bin1) == 1, f"seeing {len(bin1)} items in bin1!"
+    assert len(bin2) == 1, f"seeing {len(bin2)} items in bin2!"
+
+    states[bin1[0]] = PlannerState.PICKING_FROM_Y_BIN
+    states[bin2[0]] = PlannerState.PICKING_FROM_X_BIN
+
+    food_opts = [bin1[0], bin2[0]]
+
+    print(food_opts)
+    tasks = get_order(food_opts)
+    print(tasks)
+
+    ordered = True
+
+def check_image(camera_name):
+    # to start, we'll create a very basic vision thing. we'll just check the colour of the items
+    rgb_im = diagram.GetOutputPort(f"{camera_name}.rgb_image").Eval(context).data
+    rgb_im = rgb_im[:, :, 0:3]
+    col = set()
+    for arr in rgb_im:
+        for pix in arr:
+            col.add(tuple(pix))
+    # print((79, 3, 79) in col)
+    # print((116, 97, 101) in col)
+    # print(col)
+    plt.imshow(rgb_im)
+    plt.show()
+    # print(close_to((116, 97, 101), col))
+    pixel_to_item = {
+        (143, 127, 130): "bread",
+        (62, 17, 35): "chicken",
+    }
+    items = []
+    if len(items) == 1:
+        plt.imsave(f"data/{items[0]}/{datetime.now()}.png", rgb_im)
+    else:
+        plt.imsave(f"{datetime.now()}.png", rgb_im)
+    for pixel in pixel_to_item:
+        if close_to(pixel, col):
+            items.append(pixel_to_item[pixel])
+    return items
 
 class Planner(LeafSystem):
     def __init__(self, plant):
@@ -101,9 +168,9 @@ class Planner(LeafSystem):
         self._y_bin_grasp_index = self.DeclareAbstractInputPort(
             "y_bin_grasp", AbstractValue.Make((np.inf, RigidTransform()))
         ).get_index()
-        self._z_bin_grasp_index = self.DeclareAbstractInputPort(
-            "z_bin_grasp", AbstractValue.Make((np.inf, RigidTransform()))
-        ).get_index()
+        # self._z_bin_grasp_index = self.DeclareAbstractInputPort(
+        #     "z_bin_grasp", AbstractValue.Make((np.inf, RigidTransform()))
+        # ).get_index()
         self._wsg_state_index = self.DeclareVectorInputPort("wsg_state", 2).get_index()
 
         self._mode_index = self.DeclareAbstractState(
@@ -154,6 +221,7 @@ class Planner(LeafSystem):
         self.DeclarePeriodicUnrestrictedUpdateEvent(0.1, 0.0, self.Update)
 
     def Update(self, context, state):
+        global ordered
         mode = context.get_abstract_state(int(self._mode_index)).get_value()
 
         current_time = context.get_time()
@@ -161,6 +229,8 @@ class Planner(LeafSystem):
 
         if mode == PlannerState.WAIT_FOR_OBJECTS_TO_SETTLE:
             if context.get_time() - times["initial"] > 1.0:
+                if not ordered:
+                    assign_to_bins()
                 self.Plan(context, state)
             return
         elif mode == PlannerState.GO_HOME:
@@ -259,44 +329,84 @@ class Planner(LeafSystem):
             ]
         }
 
-        global tasks, so_far, states, idx
+        global tasks, states, idx
         idx += 1
         if idx >= len(tasks):
             assert False, "done with all the tasks!"
         mode = states[tasks[idx]]
 
+        # check_image("camera4")
+
         # TODO: CAN MODIFY TO WORK WITH DIFFERENT BINS WITH DIFFERENT THINGS
         cost = np.inf
         retry = False
         for i in range(5):
+            # Y == chicken
+            # X == bread
+
+            # print(PlannerState, got_first_bread, got_second_bread, got_filling)
+
             # right now, default to if tried, succeeded. Can update later
             if mode == PlannerState.PICKING_FROM_Y_BIN:
+                # if retry:
+                #     # if we have to retry, don't add any new logic
                 print("going for y...")
                 cost, X_G["pick"] = self.get_input_port(self._y_bin_grasp_index).Eval(
                     context
                 )
+                #         context
+                #     )
+                #     got_filling = True
+                #     mode = PlannerState.PICKING_FROM_X_BIN
             elif mode == PlannerState.PICKING_FROM_X_BIN:
+                # if we have to retry, don't add any new logic
+                # if retry: 
                 print("going for x from x...")
                 cost, X_G["pick"] = self.get_input_port(self._x_bin_grasp_index).Eval(
                     context
                 )
-            elif mode == PlannerState.PICKING_FROM_Z_BIN:
-                print("going for z from z")
-                cost, X_G["pick"] = self.get_input_port(self._z_bin_grasp_index).Eval(
-                    context
-                )
+                #     break
+                # if got_first_bread:
+                #     # we're done
+                #     mode = PlannerState.GO_HOME
+                #     got_second_bread = True
+                #     assert False, "Done!"
+                # else:
+                #     got_first_bread = True
+                #     mode = PlannerState.PICKING_FROM_Y_BIN
+                #     cost, X_G["pick"] = self.get_input_port(self._y_bin_grasp_index).Eval(
+                #         context
+                #     )
             else:
+                # mode = states[tasks[idx]]
+                # idx += 1
                 print("going for x...")
                 cost, X_G["pick"] = self.get_input_port(self._x_bin_grasp_index).Eval(
                     context
                 )
+ 
+                    
+            # if mode == PlannerState.PICKING_FROM_Y_BIN:
+            #     cost, X_G["pick"] = self.get_input_port(self._y_bin_grasp_index).Eval(
+            #         context
+            #     )
+            #     if np.isinf(cost):
+            #         mode = PlannerState.PICKING_FROM_X_BIN
+            # else:
+            #     # cost, X_G["pick"] = self.get_input_port(self._x_bin_grasp_index).Eval(
+            #     #     context
+            #     # )
+            #     # if np.isinf(cost):
+            #     if True:
+            #         mode = PlannerState.PICKING_FROM_Y_BIN
+            #     # else:
+            #     #     mode = PlannerState.PICKING_FROM_X_BIN
+
             if not np.isinf(cost):
                 break
             else:
                 retry = True
 
-        if np.isinf(cost):
-            input(f"Assistance is required! Please help me pick up the {tasks[idx]}. ")
         assert not np.isinf(
             cost
         ), "Could not find a valid grasp in either bin after 5 attempts"
@@ -308,38 +418,51 @@ class Planner(LeafSystem):
         # TODO: CAN BE CHANGED TO X AND Y BINS
         
         # placing on the mat...
-        X_G["place"] = RigidTransform(
-            RollPitchYaw(-np.pi / 2, 0, 0),
-            [-0.01, -0.25, 0.15],
-        )
 
-        # NOTE: We do NOT want this (since it's pick-specific)
-        # INSTEAD we want to specify keypoints probably then have the robot execute the trajectory
-        # TODO: Another place to update to be conditioned on the mustard
-        X_G, times = MakeGripperFrames_Squeeze(X_G, t0=context.get_time())
-        print(X_G)
-        # print(
-        #     f"Planned {times['postplace'] - times['initial']} second trajectory in mode {mode}—{mode_to_str[mode]} at time {context.get_time()}."
-        # )
+        # TODO: we'll likely want it to increase as the sandwich size increases
+        if mode == PlannerState.PICKING_FROM_X_BIN:
+            X_G["place"] = RigidTransform(
+                RollPitchYaw(-np.pi / 2, 0, 0),
+                [-0.01, -0.25, 0.15],
+                # -0.01, -0.25, 
+                # 0, -0.25, -0.015
+            )
+        else:
+            # making the toppings a bit closer since it bounces as is
+            X_G["place"] = RigidTransform(
+                RollPitchYaw(-np.pi / 2, 0, 0),
+                [-0.01, -0.25, 0.12],
+                # 0, -0.25, -0.015
+            )
+ 
+
+        # if mode == PlannerState.PICKING_FROM_X_BIN:
+        #     # Place in Y bin:
+        #     X_G["place"] = RigidTransform(
+        #         RollPitchYaw(-np.pi / 2, 0, 0),
+        #         [rng.uniform(-0.25, 0.15), rng.uniform(-0.6, -0.4), 0.3],
+        #     )
+        # else:
+        #     # Place in X bin:
+        #     X_G["place"] = RigidTransform(
+        #         RollPitchYaw(-np.pi / 2, 0, np.pi / 2),
+        #         [rng.uniform(0.35, 0.65), rng.uniform(-0.12, 0.28), 0.3],
+        #     )
+
+        X_G, times = MakeGripperFrames(X_G, t0=context.get_time())
+        print(
+            f"Planned {times['postplace'] - times['initial']} second trajectory in mode {mode} at time {context.get_time()}."
+        )
         state.get_mutable_abstract_state(int(self._times_index)).set_value(times)
 
-        if True: # False:  # Useful for debugging
-            pass
-            # AddMeshcatTriad(meshcat, "X_Oinitial", X_PT=X_G["initial"])
-            # AddMeshcatTriad(meshcat, "X_Gstart", X_PT=X_G["place_start"])
-            # AddMeshcatTriad(meshcat, "X_Gclear2", X_PT=X_G["clearance2"])
-            # AddMeshcatTriad(meshcat, "X_Gend", X_PT=X_G["place_end"])
-            # AddMeshcatTriad(meshcat, "X_Gprepick", X_PT=X_G["prepick"])
-            # AddMeshcatTriad(meshcat, "X_Gpreplace", X_PT=X_G["preplace"])
-            # AddMeshcatTriad(meshcat, "X_Gpick", X_PT=X_G["pick"])
-            # AddMeshcatTriad(meshcat, "X_Gplace", X_PT=X_G["place"])
+        if False:  # Useful for debugging
+            AddMeshcatTriad(meshcat, "X_Oinitial", X_PT=X_O["initial"])
+            AddMeshcatTriad(meshcat, "X_Gprepick", X_PT=X_G["prepick"])
+            AddMeshcatTriad(meshcat, "X_Gpick", X_PT=X_G["pick"])
+            AddMeshcatTriad(meshcat, "X_Gplace", X_PT=X_G["place"])
 
-        # TODO: Add some sort of conditional for if it's a mustard or something
-
-        traj_X_G = MakeGripperPoseTrajectory_Squeeze(X_G, times)
-        traj_wsg_command = MakeGripperCommandTrajectory_Squeeze(times)
-
-        print(traj_X_G, traj_wsg_command)
+        traj_X_G = MakeGripperPoseTrajectory(X_G, times)
+        traj_wsg_command = MakeGripperCommandTrajectory(times)
 
         state.get_mutable_abstract_state(int(self._traj_X_G_index)).set_value(traj_X_G)
         state.get_mutable_abstract_state(int(self._traj_wsg_index)).set_value(
@@ -428,8 +551,9 @@ class Planner(LeafSystem):
 
         output.SetFromVector(traj_q.value(context.get_time()))
 
-
 def clutter_clearing_demo():
+    global diagram, context
+
     meshcat.Delete()
     builder = DiagramBuilder()
 
@@ -440,38 +564,60 @@ def clutter_clearing_demo():
     model_directives = """
 directives:
 """
-    NUM_CHICKEN = 1
+    
+    bin1 = {"x": -0.5, "y": -0.5, "z": -0.05}
+    bin2 = {"x": 0.5, "y": -0.5, "z": -0.05}
+    if np.random.uniform() < 0.5:
+        chicken_range = bin1
+        bread_range = bin2
+    else:
+        chicken_range = bin2
+        bread_range = bin1
+
+    NUM_CHICKEN = 10
     for i in range(NUM_CHICKEN):
         # porting over previous work
-        ranges = {"x": 0, "y": -0.6, "z": 0.15}
-        name = "ketchup"
+        ranges = chicken_range # {"x": -0.5, "y": -0.5, "z": -0.05}
+        name = "foam_chicken"
         num = i
-        '''
+        model_directives += f"""
+- add_model:
+    name: {name}_{num}
+    file: file://{full_path}{name}.sdf
+    default_free_body_pose:
+        base_link:
+            translation: [{ranges['x'] + np.random.randint(-10, 10)/50}, {ranges['y'] + np.random.randint(-10, 10)/50}, {ranges['z'] + np.random.randint(10)/10}]
+"""
+
+    NUM_BREAD = 10
+    for num in range(NUM_BREAD):
+        ranges = bread_range # {"x": 0.5, "y": -0.5, "z": -0.05}
+        name = "Pound_Cake_OBJ"
+        model_directives += f"""
+- add_model:
+    name: {name}_{num}
+    file: file://{full_path}{name}.sdf
+    default_free_body_pose:
+        base_link:
+            translation: [{ranges['x'] + np.random.randint(-10, 10)/50}, {ranges['y'] + np.random.randint(-10, 10)/50}, {ranges['z'] + np.random.randint(10)/10}]
+"""
+    '''
         model_directives += f"""
 - add_model:
     name: {name}_{num}
     file: file://{full_path}{name}.sdf
     default_free_body_pose:
         {name}: # Change here!
-            translation: [{ranges['x']}, {ranges['y']}, {ranges['z']}]
+            translation: [{0.5 + np.random.randint(-10, 10)/50}, {-0.6 + np.random.randint(-10, 10)/50}, {0.01}] 
+            rotation: !Rpy {{ deg: [{np.random.randint(0, 90)}, {np.random.randint(0, 90)}, {np.random.randint(0, 90)}] }}
 """
-        '''
-        model_directives += f"""
-- add_model:
-    name: ycb{i}
-    file: file://{full_path}{name}.sdf
-    default_free_body_pose:
-        base_link_soup:
-            translation: [{ranges['x']}, {ranges['y']}, {ranges['z']}]
-            rotation: !Rpy {{ deg: [90, 0, 90] }}
-"""
-        # TODO: ADD INFO!!
-        # translation: [{ranges['x'] + np.random.randint(-10, 10)/50}, {ranges['y'] + np.random.randint(-10, 10)/50}, {ranges['z'] + np.random.randint(10)/10}]
+    '''
 
     scenario = add_directives(scenario, data=model_directives)
 
     station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
     to_point_cloud = AddPointClouds(scenario=scenario, station=station, builder=builder)
+    # print(to_point_cloud["camera0"])
     plant = station.GetSubsystemByName("plant")
 
     ### CREATE GRASP SELECTOR FOR EACH PORT
@@ -530,36 +676,35 @@ directives:
         station.GetOutputPort("body_poses"),
         x_bin_grasp_selector.GetInputPort("body_poses"),
     )
-
     ## trying to add the z bin
 
-    z_bin_grasp_selector = builder.AddSystem(
-        GraspSelector(
-            plant,
-            plant.GetModelInstanceByName("bin2"),
-            camera_body_indices=[
-                plant.GetBodyIndices(plant.GetModelInstanceByName("camera6"))[0],
-                plant.GetBodyIndices(plant.GetModelInstanceByName("camera7"))[0],
-                plant.GetBodyIndices(plant.GetModelInstanceByName("camera8"))[0],
-            ],
-        )
-    )
-    builder.Connect(
-        to_point_cloud["camera6"].get_output_port(),
-        z_bin_grasp_selector.get_input_port(0),
-    )
-    builder.Connect(
-        to_point_cloud["camera7"].get_output_port(),
-        z_bin_grasp_selector.get_input_port(1),
-    )
-    builder.Connect(
-        to_point_cloud["camera8"].get_output_port(),
-        z_bin_grasp_selector.get_input_port(2),
-    )
-    builder.Connect(
-        station.GetOutputPort("body_poses"),
-        z_bin_grasp_selector.GetInputPort("body_poses"),
-    )
+    # z_bin_grasp_selector = builder.AddSystem(
+    #     GraspSelector(
+    #         plant,
+    #         plant.GetModelInstanceByName("bin2"),
+    #         camera_body_indices=[
+    #             plant.GetBodyIndices(plant.GetModelInstanceByName("camera6"))[0],
+    #             plant.GetBodyIndices(plant.GetModelInstanceByName("camera7"))[0],
+    #             plant.GetBodyIndices(plant.GetModelInstanceByName("camera8"))[0],
+    #         ],
+    #     )
+    # )
+    # builder.Connect(
+    #     to_point_cloud["camera6"].get_output_port(),
+    #     z_bin_grasp_selector.get_input_port(0),
+    # )
+    # builder.Connect(
+    #     to_point_cloud["camera7"].get_output_port(),
+    #     z_bin_grasp_selector.get_input_port(1),
+    # )
+    # builder.Connect(
+    #     to_point_cloud["camera8"].get_output_port(),
+    #     z_bin_grasp_selector.get_input_port(2),
+    # )
+    # builder.Connect(
+    #     station.GetOutputPort("body_poses"),
+    #     z_bin_grasp_selector.GetInputPort("body_poses"),
+    # )
 
     planner = builder.AddSystem(Planner(plant))
     builder.Connect(
@@ -573,10 +718,10 @@ directives:
         y_bin_grasp_selector.get_output_port(),
         planner.GetInputPort("y_bin_grasp"),
     )
-    builder.Connect(
-        z_bin_grasp_selector.get_output_port(),
-        planner.GetInputPort("z_bin_grasp"),
-    )
+    # builder.Connect(
+    #     z_bin_grasp_selector.get_output_port(),
+    #     planner.GetInputPort("z_bin_grasp"),
+    # )
     builder.Connect(
         station.GetOutputPort("wsg.state_measured"),
         planner.GetInputPort("wsg_state"),
@@ -601,12 +746,12 @@ directives:
         planner.GetOutputPort("reset_diff_ik"),
         diff_ik.GetInputPort("use_robot_state"),
     )
-     
+
     builder.Connect(
         planner.GetOutputPort("wsg_position"),
         station.GetInputPort("wsg.position"),
     )
-    
+
     # The DiffIK and the direct position-control modes go through a PortSwitch
     switch = builder.AddSystem(PortSwitch(7))
     builder.Connect(diff_ik.get_output_port(), switch.DeclareInputPort("diff_ik"))
@@ -620,13 +765,90 @@ directives:
         switch.get_port_selector_input_port(),
     )
 
+    ### Exp. Stuff!
+    """
+    Start of Exp. Stuff!!!!!
+    """
+    # builder = DiagramBuilder()
+
+    # # Create the physics engine + scene graph.
+    # plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.0)
+    # parser = Parser(plant)
+    # ConfigureParser(parser)
+    # parser.AddModelsFromUrl(
+    #     "package://manipulation/mustard_w_cameras.dmd.yaml"
+    # )
+    # plant.Finalize()
+
+    # # Add a visualizer just to help us see the object.
+    # use_meshcat = False
+    # if use_meshcat:
+    #     meshcat = builder.AddSystem(MeshcatVisualizer(scene_graph))
+    #     builder.Connect(
+    #         scene_graph.get_query_output_port(),
+    #         meshcat.get_geometry_query_input_port(),
+    #     )
+
+    # AddRgbdSensors(builder, plant, scene_graph)
+
+    # diagram = builder.Build()
+    # diagram.set_name("depth_camera_demo_system")
+
+    # context = diagram.CreateDefaultContext()
+
+    # # setup
+    # meshcat.SetProperty("/Background", "visible", False)
+
+    # # getting data
+    # point_cloud = diagram.GetOutputPort("camera0_point_cloud").Eval(
+    #     context
+    # )
+    # depth_im_read = (
+    #     diagram.GetOutputPort("camera0_depth_image")
+    #     .Eval(context)
+    #     .data.squeeze()
+    # )
+    # depth_im = deepcopy(depth_im_read)
+    # depth_im[depth_im == np.inf] = 10.0
+    # label_im = (
+    #     diagram.GetOutputPort("camera0_label_image")
+    #     .Eval(context)
+    #     .data.squeeze()
+    # )
+    # rgb_im = (
+    #     diagram.GetOutputPort("camera0_rgb_image").Eval(context).data
+    # )
+
+    # print(rgb_im)
+
     visualizer = MeshcatVisualizer.AddToBuilder(
         builder, station.GetOutputPort("query_object"), meshcat
     )
+    builder.ExportOutput(station.GetOutputPort("camera0.rgb_image"), "camera0.rgb_image")
+    builder.ExportOutput(station.GetOutputPort("camera1.rgb_image"), "camera1.rgb_image")
+    builder.ExportOutput(station.GetOutputPort("camera2.rgb_image"), "camera2.rgb_image")
+    builder.ExportOutput(station.GetOutputPort("camera3.rgb_image"), "camera3.rgb_image")
+    builder.ExportOutput(station.GetOutputPort("camera4.rgb_image"), "camera4.rgb_image")
+    builder.ExportOutput(station.GetOutputPort("camera5.rgb_image"), "camera5.rgb_image")
+
+    ### Exp. Stuff!
+    visualizer = MeshcatVisualizer.AddToBuilder(
+        builder, station.GetOutputPort("query_object"), meshcat
+    )
+    # AddRgbdSensors(builder, plant, scene_graph)
     diagram = builder.Build()
+
 
     simulator = Simulator(diagram)
     context = simulator.get_context()
+
+    # print(context)
+
+    # print(station.GetOutputPort("camera0.rgb_image").Eval(context).data)
+
+    # rgb_im = station.GetOutputPort("camera0.rgb_image").Eval(context).data
+    # plt.imshow(rgb_im[:, :, 0:3])
+    # plt.show()
 
     # plant_context = plant.GetMyMutableContextFromRoot(context)
     # z = 0.2
@@ -640,6 +862,14 @@ directives:
 
     simulator.AdvanceTo(0.1)
     meshcat.Flush()  # Wait for the large object meshes to get to meshcat.
+
+    # rgb_im = diagram.GetOutputPort("camera3.rgb_image").Eval(context).data
+    # plt.imshow(rgb_im[:, :, 0:3])
+    # plt.show()
+
+    # check_image("camera0")
+    # assign_to_bins()
+
 
     if running_as_notebook:
         simulator.set_target_realtime_rate(1.0)

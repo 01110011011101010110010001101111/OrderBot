@@ -42,18 +42,15 @@ from manipulation.station import (
     load_scenario,
 )
 
+from kinematics import GraspSelector
+from order_to_plan import get_order
 from mod_pick import (
     MakeGripperCommandTrajectory_Squeeze,
     MakeGripperFrames_Squeeze,
     MakeGripperPoseTrajectory_Squeeze,
 )
- 
-
-from kinematics import GraspSelector
-from order_to_plan import get_order
 
 import matplotlib.pyplot as plt
-from datetime import datetime
 
 full_path = "/Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/"
 diagram = None
@@ -86,8 +83,11 @@ class PlannerState(Enum):
 tasks = [] # ["bread", "chicken", "bread"]
 idx = -1
 ordered = False
+# LIST OF ITEMS TO BE SQUEEZED
+squeezable = ["ketchup"]
 
 states = {
+    "ketchup": PlannerState.PICKING_FROM_Z_BIN,
     # "bread": PlannerState.PICKING_FROM_X_BIN,
     # "chicken": PlannerState.PICKING_FROM_Y_BIN,
 }
@@ -105,10 +105,8 @@ def close_to(val, col_set, noise = 2):
  
 def assign_to_bins():
     global tasks, ordered 
-    for num in range(6):
-        check_image(f"camera{num}")
-    bin1 = [] # check_image("camera0")
-    bin2 = [] # check_image("camera4")
+    bin1 = check_image("camera0")
+    bin2 = check_image("camera4")
 
     print(bin1, bin2)
 
@@ -119,7 +117,7 @@ def assign_to_bins():
     states[bin1[0]] = PlannerState.PICKING_FROM_Y_BIN
     states[bin2[0]] = PlannerState.PICKING_FROM_X_BIN
 
-    food_opts = [bin1[0], bin2[0]]
+    food_opts = ["ketchup", bin1[0], bin2[0]]
 
     print(food_opts)
     tasks = get_order(food_opts)
@@ -139,17 +137,13 @@ def check_image(camera_name):
     # print((116, 97, 101) in col)
     # print(col)
     plt.imshow(rgb_im)
-    plt.show()
+    # plt.show()
     # print(close_to((116, 97, 101), col))
     pixel_to_item = {
         (143, 127, 130): "bread",
         (62, 17, 35): "chicken",
     }
     items = []
-    if len(items) == 1:
-        plt.imsave(f"data/{items[0]}/{datetime.now()}.png", rgb_im)
-    else:
-        plt.imsave(f"{datetime.now()}.png", rgb_im)
     for pixel in pixel_to_item:
         if close_to(pixel, col):
             items.append(pixel_to_item[pixel])
@@ -168,9 +162,9 @@ class Planner(LeafSystem):
         self._y_bin_grasp_index = self.DeclareAbstractInputPort(
             "y_bin_grasp", AbstractValue.Make((np.inf, RigidTransform()))
         ).get_index()
-        # self._z_bin_grasp_index = self.DeclareAbstractInputPort(
-        #     "z_bin_grasp", AbstractValue.Make((np.inf, RigidTransform()))
-        # ).get_index()
+        self._z_bin_grasp_index = self.DeclareAbstractInputPort(
+            "z_bin_grasp", AbstractValue.Make((np.inf, RigidTransform()))
+        ).get_index()
         self._wsg_state_index = self.DeclareVectorInputPort("wsg_state", 2).get_index()
 
         self._mode_index = self.DeclareAbstractState(
@@ -329,7 +323,7 @@ class Planner(LeafSystem):
             ]
         }
 
-        global tasks, states, idx
+        global tasks, states, idx, squeezable
         idx += 1
         if idx >= len(tasks):
             assert False, "done with all the tasks!"
@@ -377,6 +371,9 @@ class Planner(LeafSystem):
                 #     cost, X_G["pick"] = self.get_input_port(self._y_bin_grasp_index).Eval(
                 #         context
                 #     )
+            elif mode == PlannerState.PICKING_FROM_Z_BIN:
+                print("going for z from z...")
+                cost, X_G["pick"] = self.get_input_port(self._z_bin_grasp_index).Eval(context)
             else:
                 # mode = states[tasks[idx]]
                 # idx += 1
@@ -449,7 +446,10 @@ class Planner(LeafSystem):
         #         [rng.uniform(0.35, 0.65), rng.uniform(-0.12, 0.28), 0.3],
         #     )
 
-        X_G, times = MakeGripperFrames(X_G, t0=context.get_time())
+        if tasks[idx] in squeezable:
+            X_G, times = MakeGripperFrames_Squeeze(X_G, t0=context.get_time())
+        else:
+            X_G, times = MakeGripperFrames(X_G, t0=context.get_time())
         print(
             f"Planned {times['postplace'] - times['initial']} second trajectory in mode {mode} at time {context.get_time()}."
         )
@@ -461,8 +461,13 @@ class Planner(LeafSystem):
             AddMeshcatTriad(meshcat, "X_Gpick", X_PT=X_G["pick"])
             AddMeshcatTriad(meshcat, "X_Gplace", X_PT=X_G["place"])
 
-        traj_X_G = MakeGripperPoseTrajectory(X_G, times)
-        traj_wsg_command = MakeGripperCommandTrajectory(times)
+        # print(tasks[idx])
+        if tasks[idx] in squeezable:
+            traj_X_G = MakeGripperPoseTrajectory_Squeeze(X_G, times)
+            traj_wsg_command = MakeGripperCommandTrajectory_Squeeze(times)
+        else:
+            traj_X_G = MakeGripperPoseTrajectory(X_G, times)
+            traj_wsg_command = MakeGripperCommandTrajectory(times)
 
         state.get_mutable_abstract_state(int(self._traj_X_G_index)).set_value(traj_X_G)
         state.get_mutable_abstract_state(int(self._traj_wsg_index)).set_value(
@@ -612,6 +617,22 @@ directives:
             rotation: !Rpy {{ deg: [{np.random.randint(0, 90)}, {np.random.randint(0, 90)}, {np.random.randint(0, 90)}] }}
 """
     '''
+    NUM_KETCHUP = 1
+    for i in range(NUM_KETCHUP):
+        # porting over previous work
+        ranges = {"x": 0, "y": -0.6, "z": 0.15}
+        name = "ketchup"
+        num = i
+        model_directives += f"""
+- add_model:
+    name: ycb{i}
+    file: file://{full_path}{name}.sdf
+    default_free_body_pose:
+        base_link_soup:
+            translation: [{ranges['x']}, {ranges['y']}, {ranges['z']}]
+            rotation: !Rpy {{ deg: [90, 0, 90] }}
+"""
+
 
     scenario = add_directives(scenario, data=model_directives)
 
@@ -678,33 +699,33 @@ directives:
     )
     ## trying to add the z bin
 
-    # z_bin_grasp_selector = builder.AddSystem(
-    #     GraspSelector(
-    #         plant,
-    #         plant.GetModelInstanceByName("bin2"),
-    #         camera_body_indices=[
-    #             plant.GetBodyIndices(plant.GetModelInstanceByName("camera6"))[0],
-    #             plant.GetBodyIndices(plant.GetModelInstanceByName("camera7"))[0],
-    #             plant.GetBodyIndices(plant.GetModelInstanceByName("camera8"))[0],
-    #         ],
-    #     )
-    # )
-    # builder.Connect(
-    #     to_point_cloud["camera6"].get_output_port(),
-    #     z_bin_grasp_selector.get_input_port(0),
-    # )
-    # builder.Connect(
-    #     to_point_cloud["camera7"].get_output_port(),
-    #     z_bin_grasp_selector.get_input_port(1),
-    # )
-    # builder.Connect(
-    #     to_point_cloud["camera8"].get_output_port(),
-    #     z_bin_grasp_selector.get_input_port(2),
-    # )
-    # builder.Connect(
-    #     station.GetOutputPort("body_poses"),
-    #     z_bin_grasp_selector.GetInputPort("body_poses"),
-    # )
+    z_bin_grasp_selector = builder.AddSystem(
+        GraspSelector(
+            plant,
+            plant.GetModelInstanceByName("bin2"),
+            camera_body_indices=[
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera6"))[0],
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera7"))[0],
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera8"))[0],
+            ],
+        )
+    )
+    builder.Connect(
+        to_point_cloud["camera6"].get_output_port(),
+        z_bin_grasp_selector.get_input_port(0),
+    )
+    builder.Connect(
+        to_point_cloud["camera7"].get_output_port(),
+        z_bin_grasp_selector.get_input_port(1),
+    )
+    builder.Connect(
+        to_point_cloud["camera8"].get_output_port(),
+        z_bin_grasp_selector.get_input_port(2),
+    )
+    builder.Connect(
+        station.GetOutputPort("body_poses"),
+        z_bin_grasp_selector.GetInputPort("body_poses"),
+    )
 
     planner = builder.AddSystem(Planner(plant))
     builder.Connect(
@@ -718,10 +739,10 @@ directives:
         y_bin_grasp_selector.get_output_port(),
         planner.GetInputPort("y_bin_grasp"),
     )
-    # builder.Connect(
-    #     z_bin_grasp_selector.get_output_port(),
-    #     planner.GetInputPort("z_bin_grasp"),
-    # )
+    builder.Connect(
+        z_bin_grasp_selector.get_output_port(),
+        planner.GetInputPort("z_bin_grasp"),
+    )
     builder.Connect(
         station.GetOutputPort("wsg.state_measured"),
         planner.GetInputPort("wsg_state"),
@@ -824,12 +845,8 @@ directives:
     visualizer = MeshcatVisualizer.AddToBuilder(
         builder, station.GetOutputPort("query_object"), meshcat
     )
-    builder.ExportOutput(station.GetOutputPort("camera0.rgb_image"), "camera0.rgb_image")
-    builder.ExportOutput(station.GetOutputPort("camera1.rgb_image"), "camera1.rgb_image")
-    builder.ExportOutput(station.GetOutputPort("camera2.rgb_image"), "camera2.rgb_image")
-    builder.ExportOutput(station.GetOutputPort("camera3.rgb_image"), "camera3.rgb_image")
     builder.ExportOutput(station.GetOutputPort("camera4.rgb_image"), "camera4.rgb_image")
-    builder.ExportOutput(station.GetOutputPort("camera5.rgb_image"), "camera5.rgb_image")
+    builder.ExportOutput(station.GetOutputPort("camera0.rgb_image"), "camera0.rgb_image")
 
     ### Exp. Stuff!
     visualizer = MeshcatVisualizer.AddToBuilder(

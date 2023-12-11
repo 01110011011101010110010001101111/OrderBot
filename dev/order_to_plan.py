@@ -39,6 +39,7 @@ class OrderToFoods:
 
         return set()
     def execute(self, order):
+        # print("EXTRACTED FOODS: ", set(self.extract_food_items(order)))
         return set(self.extract_food_items(order)) - set(self.find_modifier(order))
 
 # food_opts = ["chicken", "sandwich"]
@@ -48,10 +49,15 @@ def get_order(food_opts):
     nlp = OrderToFoods()
     plan = []
 
+    # print("ORDER: ", order)
+
     proposed_foods = nlp.execute(order)
+    
+    # print(proposed_foods)
 
     is_sandwich = "sandwich" in order
     for food in food_opts:
+        # print(food)
         if food in proposed_foods:
             plan.append(food)
     
