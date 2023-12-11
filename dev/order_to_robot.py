@@ -42,10 +42,18 @@ from manipulation.station import (
     load_scenario,
 )
 
+from mod_pick import (
+    MakeGripperCommandTrajectory_Squeeze,
+    MakeGripperFrames_Squeeze,
+    MakeGripperPoseTrajectory_Squeeze,
+)
+ 
+
 from kinematics import GraspSelector
 from order_to_plan import get_order
 
 import matplotlib.pyplot as plt
+from datetime import datetime
 
 full_path = "/Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/"
 diagram = None
@@ -97,8 +105,10 @@ def close_to(val, col_set, noise = 2):
  
 def assign_to_bins():
     global tasks, ordered 
-    bin1 = check_image("camera0")
-    bin2 = check_image("camera4")
+    for num in range(6):
+        check_image(f"camera{num}")
+    bin1 = [] # check_image("camera0")
+    bin2 = [] # check_image("camera4")
 
     print(bin1, bin2)
 
@@ -136,6 +146,10 @@ def check_image(camera_name):
         (62, 17, 35): "chicken",
     }
     items = []
+    if len(items) == 1:
+        plt.imsave(f"data/{items[0]}/{datetime.now()}.png", rgb_im)
+    else:
+        plt.imsave(f"{datetime.now()}.png", rgb_im)
     for pixel in pixel_to_item:
         if close_to(pixel, col):
             items.append(pixel_to_item[pixel])
@@ -810,8 +824,12 @@ directives:
     visualizer = MeshcatVisualizer.AddToBuilder(
         builder, station.GetOutputPort("query_object"), meshcat
     )
-    builder.ExportOutput(station.GetOutputPort("camera4.rgb_image"), "camera4.rgb_image")
     builder.ExportOutput(station.GetOutputPort("camera0.rgb_image"), "camera0.rgb_image")
+    builder.ExportOutput(station.GetOutputPort("camera1.rgb_image"), "camera1.rgb_image")
+    builder.ExportOutput(station.GetOutputPort("camera2.rgb_image"), "camera2.rgb_image")
+    builder.ExportOutput(station.GetOutputPort("camera3.rgb_image"), "camera3.rgb_image")
+    builder.ExportOutput(station.GetOutputPort("camera4.rgb_image"), "camera4.rgb_image")
+    builder.ExportOutput(station.GetOutputPort("camera5.rgb_image"), "camera5.rgb_image")
 
     ### Exp. Stuff!
     visualizer = MeshcatVisualizer.AddToBuilder(
