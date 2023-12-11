@@ -5,7 +5,7 @@ from cnn import SimpleCNN  # Import your model class
 
 # Load the trained model
 model = SimpleCNN(num_classes=2)
-model_path = 'saved_model.pth'
+model_path = 'models/saved_model.pth'
 model.load_state_dict(torch.load(model_path))
 model.eval()
 

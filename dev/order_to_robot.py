@@ -52,6 +52,26 @@ from mod_pick import (
 
 import matplotlib.pyplot as plt
 
+import torch
+from torchvision import transforms
+from PIL import Image
+from cnn import SimpleCNN
+
+# Load the trained model
+model = SimpleCNN(num_classes=2)
+model_path = 'models/saved_model.pth'
+model.load_state_dict(torch.load(model_path))
+model.eval()
+
+# Define the transformation for the input image
+transform = transforms.Compose([
+    transforms.Resize((128, 128)),
+    transforms.ToTensor(),
+])
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+
 full_path = "/Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/"
 diagram = None
 context = None
@@ -129,6 +149,24 @@ def check_image(camera_name):
     # to start, we'll create a very basic vision thing. we'll just check the colour of the items
     rgb_im = diagram.GetOutputPort(f"{camera_name}.rgb_image").Eval(context).data
     rgb_im = rgb_im[:, :, 0:3]
+    # NOTE: a bit of a jank way to preprocess, will update
+    plt.imsave("tmp.png", rgb_im)
+    input_image = Image.open("tmp.png").convert('RGB')
+    input_tensor = transform(input_image)
+    input_batch = input_tensor.unsqueeze(0)  # Add a batch dimension
+    input_batch = input_batch.to(device)
+    with torch.no_grad():
+        output = model(input_batch)
+    # Get the predicted class
+    _, predicted_class = torch.max(output, 1)
+
+    # Map the predicted class index to the class label
+    class_index = predicted_class.item()
+    classes = ["bread", "chicken"]
+    class_label = classes[class_index]
+
+    return [class_label]
+
     col = set()
     for arr in rgb_im:
         for pix in arr:
