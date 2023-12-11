@@ -23,7 +23,7 @@ def MakeGripperFrames_Squeeze(X_G, t0=0):
     X_G["prepick"] = X_G["pick"] @ X_GgraspGpregrasp
     # X_G["prepick"].set_rotation(RotationMatrix.MakeZRotation(np.pi / 2))
     X_G["preplace"] = X_G["place"] @ X_GgraspGpregrasp_post 
-    X_G["preplace"].set_rotation(RotationMatrix.MakeZRotation(-np.pi / 3))
+    # X_G["preplace"].set_rotation(RotationMatrix.MakeZRotation(-np.pi / 3))
 
     # I'll interpolate a halfway orientation by converting to axis angle and
     # halving the angle.
@@ -76,16 +76,29 @@ def MakeGripperFrames_Squeeze(X_G, t0=0):
     )
     times["clearance"] = times["postpick"] + time_to_from_clearance
     times["preplace"] = times["clearance"] + time_to_from_clearance
-    times["place_start"] = times["preplace"] + 2.0
-    times["clearance2"] = times["place_start"] + time_to_from_clearance
-    times["place_end"] = times["clearance2"] + 2.0
-    X_G["place_start"] = X_G["pick"]
+    times["preplace_start"] = times["preplace"] + 2.0
+    times["preplace_hold"] = times["preplace_start"] + 1.0
+    times["preplace_stop"] = times["preplace_hold"] + 2.0
+    times["clearance2"] = times["preplace_stop"] + time_to_from_clearance
+    times["place_start"] = times["clearance2"] + 2.0
+    times["place_end"] = times["place_start"] + 2.0
+    X_G["clearance2"] = RigidTransform() # X_G["pick"].copy()
     X_G["place"] = X_G["pick"]
+    X_G["preplace_stop"] = X_G["preplace"]
+    X_G["preplace_start"] = X_G["preplace"]
+    X_G["preplace_hold"] = X_G["preplace"]
+    p_G = np.array(X_G["pick"].translation())
+    p_G[2] += 0.25
+    X_G["clearance2"].set_translation(p_G)
+    X_G["clearance2"].set_rotation(X_G["pick"].rotation())
+    X_G["place_start"] = X_G["pick_start"]
     X_G["place_end"] = X_G["pick"]
     # X_G["place_start"] = X_G["place"]
     # X_G["place_end"] = X_G["place"]
-    # times["postplace"] = times["place_end"] + 2.0
-    # X_G["postplace"] = X_G["preplace"]
+    times["clearance3"] = times["place_end"] + 2.0
+    X_G["clearance3"] = X_G["clearance2"]
+    times["postplace"] = times["clearance3"] + 2.0
+    X_G["postplace"] = X_G["preplace"]
 
     return X_G, times
 
@@ -103,10 +116,14 @@ def MakeGripperPoseTrajectory_Squeeze(X_G, times):
         "postpick",
         "clearance",
         "preplace",
-        "place_start",
+        "preplace_start",
+        "preplace_hold",
+        "preplace_stop",
         "clearance2",
+        "place_start",
         "place_end",
-        # "postplace",
+        "clearance3",
+        "postplace",
     ]:
         sample_times.append(times[name])
         poses.append(X_G[name])
@@ -119,17 +136,25 @@ def MakeGripperPoseTrajectory_Squeeze(X_G, times):
 def MakeGripperCommandTrajectory_Squeeze(times):
     """Constructs a WSG command trajectory from the plan "sketch"."""
     opened = np.array([0.107])
-    closed = np.array([0.0])
+    closed = np.array([0.03])
     # NOTE: might mess with some of the GO_HOME logic
-    squeeze = np.array([0.085])
+    squeeze = np.array([0.0])
 
     traj_wsg_command = PiecewisePolynomial.FirstOrderHold(
         [times["initial"], times["pick_start"]],
         np.hstack([[opened], [opened]]),
     )
     traj_wsg_command.AppendFirstOrderSegment(times["pick_end"], closed)
+    traj_wsg_command.AppendFirstOrderSegment(times["postpick"], closed)
+    traj_wsg_command.AppendFirstOrderSegment(times["clearance"], closed)
+    traj_wsg_command.AppendFirstOrderSegment(times["preplace"], closed)
+    traj_wsg_command.AppendFirstOrderSegment(times["preplace_start"], squeeze)
+    traj_wsg_command.AppendFirstOrderSegment(times["preplace_hold"], squeeze)
+    traj_wsg_command.AppendFirstOrderSegment(times["preplace_stop"], closed)
+    traj_wsg_command.AppendFirstOrderSegment(times["clearance2"], closed)
     traj_wsg_command.AppendFirstOrderSegment(times["place_start"], closed)
     traj_wsg_command.AppendFirstOrderSegment(times["place_end"], opened)
-    # traj_wsg_command.AppendFirstOrderSegment(times["postplace"], opened)
+    traj_wsg_command.AppendFirstOrderSegment(times["clearance3"], opened)
+    traj_wsg_command.AppendFirstOrderSegment(times["postplace"], opened)
     return traj_wsg_command
 

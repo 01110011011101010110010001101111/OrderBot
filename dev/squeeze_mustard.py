@@ -318,11 +318,14 @@ class Planner(LeafSystem):
         state.get_mutable_abstract_state(int(self._times_index)).set_value(times)
 
         if True: # False:  # Useful for debugging
-            AddMeshcatTriad(meshcat, "X_Oinitial", X_PT=X_G["initial"])
-            AddMeshcatTriad(meshcat, "X_Gprepick", X_PT=X_G["prepick"])
-            AddMeshcatTriad(meshcat, "X_Gpreplace", X_PT=X_G["preplace"])
-            AddMeshcatTriad(meshcat, "X_Gpick", X_PT=X_G["pick"])
-            AddMeshcatTriad(meshcat, "X_Gplace", X_PT=X_G["place"])
+            # AddMeshcatTriad(meshcat, "X_Oinitial", X_PT=X_G["initial"])
+            AddMeshcatTriad(meshcat, "X_Gstart", X_PT=X_G["place_start"])
+            AddMeshcatTriad(meshcat, "X_Gclear2", X_PT=X_G["clearance2"])
+            # AddMeshcatTriad(meshcat, "X_Gend", X_PT=X_G["place_end"])
+            # AddMeshcatTriad(meshcat, "X_Gprepick", X_PT=X_G["prepick"])
+            # AddMeshcatTriad(meshcat, "X_Gpreplace", X_PT=X_G["preplace"])
+            # AddMeshcatTriad(meshcat, "X_Gpick", X_PT=X_G["pick"])
+            # AddMeshcatTriad(meshcat, "X_Gplace", X_PT=X_G["place"])
 
         # TODO: Add some sort of conditional for if it's a mustard or something
 
@@ -434,17 +437,29 @@ directives:
     for i in range(NUM_CHICKEN):
         # porting over previous work
         ranges = {"x": -0.5, "y": -0.5, "z": 0.15}
-        name = "foam_chicken"
+        name = "ketchup"
         num = i
+        '''
+        model_directives += f"""
+- add_model:
+    name: {name}_{num}
+    file: file://{full_path}{name}.sdf
+    default_free_body_pose:
+        {name}: # Change here!
+            translation: [{ranges['x']}, {ranges['y']}, {ranges['z']}]
+"""
+        '''
         model_directives += f"""
 - add_model:
     name: ycb{i}
-    file: package://manipulation/hydro/006_mustard_bottle.sdf
+    file: package://manipulation/hydro/005_tomato_soup_can.sdf
     default_free_body_pose:
-        base_link_mustard:
+        base_link_soup:
             translation: [{ranges['x']}, {ranges['y']}, {ranges['z']}]
+            rotation: !Rpy {{ deg: [90, 0, 90] }}
 """
-            # translation: [{ranges['x'] + np.random.randint(-10, 10)/50}, {ranges['y'] + np.random.randint(-10, 10)/50}, {ranges['z'] + np.random.randint(10)/10}]
+        # TODO: ADD INFO!!
+        # translation: [{ranges['x'] + np.random.randint(-10, 10)/50}, {ranges['y'] + np.random.randint(-10, 10)/50}, {ranges['z'] + np.random.randint(10)/10}]
 
     scenario = add_directives(scenario, data=model_directives)
 
