@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<sdf version="1.7">
+  <model name="foam_brick">
+    <link name="base_link">
+      <inertial>
+        <pose>0 0 0.025 0 0 0 </pose>
+        <mass>0.028</mass>
+        <inertia>
+          <ixx>1.17e-5</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1.9e-5</iyy>
+          <iyz>0</iyz>
+          <izz>1.9e-5</izz>
+        </inertia>
+      </inertial>
+      <visual name="base_link">
+        <pose>0 0 0.025 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.055 0.03 0.03</size>
+          </box>
+        </geometry>
+        <material>
+          <diffuse>1.0 0.4 0.4 1.0</diffuse>
+        </material>
+      </visual>
+      <collision name="box_collision">
+        <pose>0 0 0.025 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.054 0.029 0.029</size>
+          </box>
+        </geometry>
+        <drake:proximity_properties>
+          <drake:compliant_hydroelastic/>
+          <drake:hydroelastic_modulus>1.0e5</drake:hydroelastic_modulus>
+        </drake:proximity_properties>
+      </collision>
+    </link>
+  </model>
+</sdf>

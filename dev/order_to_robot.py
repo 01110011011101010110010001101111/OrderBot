@@ -104,10 +104,10 @@ tasks = [] # ["bread", "chicken", "bread"]
 idx = -1
 ordered = False
 # LIST OF ITEMS TO BE SQUEEZED
-squeezable = ["ketchup"]
+squeezable = ["ketchup", "ranch"]
 
 states = {
-    "ketchup": PlannerState.PICKING_FROM_Z_BIN,
+    # "ketchup": PlannerState.PICKING_FROM_Z_BIN,
     # "bread": PlannerState.PICKING_FROM_X_BIN,
     # "chicken": PlannerState.PICKING_FROM_Y_BIN,
 }
@@ -127,17 +127,20 @@ def assign_to_bins():
     global tasks, ordered 
     bin1 = check_image("camera0")
     bin2 = check_image("camera4")
+    bin3 = check_image("camera6")
 
-    print(bin1, bin2)
+    print(bin1, bin2, bin3)
 
     # TODO: HANDLE IF THIS IS NOT THE CASE!
     assert len(bin1) == 1, f"seeing {len(bin1)} items in bin1!"
     assert len(bin2) == 1, f"seeing {len(bin2)} items in bin2!"
+    assert len(bin3) == 1, f"seeing {len(bin3)} items in bin3!"
 
     states[bin1[0]] = PlannerState.PICKING_FROM_Y_BIN
     states[bin2[0]] = PlannerState.PICKING_FROM_X_BIN
+    states[bin3[0]] = PlannerState.PICKING_FROM_Z_BIN
 
-    food_opts = ["ketchup", bin1[0], bin2[0]]
+    food_opts = [bin1[0], bin2[0], bin3[0]]
 
     print(food_opts)
     tasks = get_order(food_opts)
@@ -162,7 +165,7 @@ def check_image(camera_name):
 
     # Map the predicted class index to the class label
     class_index = predicted_class.item()
-    classes = ["bread", "chicken"]
+    classes = ['bread', 'chicken', 'ketchup', 'lettuce', 'ranch', 'tomato']
     class_label = classes[class_index]
 
     return [class_label]
@@ -617,11 +620,14 @@ directives:
         chicken_range = bin2
         bread_range = bin1
 
+    if np.random.uniform() < 0.5:
+        name = "foam_tomato"
+    else:
+        name = "foam_chicken"
     NUM_CHICKEN = 10
     for i in range(NUM_CHICKEN):
         # porting over previous work
         ranges = chicken_range # {"x": -0.5, "y": -0.5, "z": -0.05}
-        name = "foam_chicken"
         num = i
         model_directives += f"""
 - add_model:
@@ -632,10 +638,13 @@ directives:
             translation: [{ranges['x'] + np.random.randint(-10, 10)/50}, {ranges['y'] + np.random.randint(-10, 10)/50}, {ranges['z'] + np.random.randint(10)/10}]
 """
 
+    if np.random.uniform() < 0.5:
+        name = "lettuce"
+    else:
+        name = "Pound_Cake_OBJ"
     NUM_BREAD = 10
     for num in range(NUM_BREAD):
         ranges = bread_range # {"x": 0.5, "y": -0.5, "z": -0.05}
-        name = "Pound_Cake_OBJ"
         model_directives += f"""
 - add_model:
     name: {name}_{num}
@@ -644,22 +653,14 @@ directives:
         base_link:
             translation: [{ranges['x'] + np.random.randint(-10, 10)/50}, {ranges['y'] + np.random.randint(-10, 10)/50}, {ranges['z'] + np.random.randint(10)/10}]
 """
-    '''
-        model_directives += f"""
-- add_model:
-    name: {name}_{num}
-    file: file://{full_path}{name}.sdf
-    default_free_body_pose:
-        {name}: # Change here!
-            translation: [{0.5 + np.random.randint(-10, 10)/50}, {-0.6 + np.random.randint(-10, 10)/50}, {0.01}] 
-            rotation: !Rpy {{ deg: [{np.random.randint(0, 90)}, {np.random.randint(0, 90)}, {np.random.randint(0, 90)}] }}
-"""
-    '''
     NUM_KETCHUP = 1
     for i in range(NUM_KETCHUP):
         # porting over previous work
         ranges = {"x": 0, "y": -0.6, "z": 0.15}
-        name = "ketchup"
+        if np.random.uniform() < 0.5:
+            name = "ranch"
+        else:
+            name = "ketchup"
         num = i
         model_directives += f"""
 - add_model:
@@ -883,8 +884,15 @@ directives:
     visualizer = MeshcatVisualizer.AddToBuilder(
         builder, station.GetOutputPort("query_object"), meshcat
     )
-    builder.ExportOutput(station.GetOutputPort("camera4.rgb_image"), "camera4.rgb_image")
     builder.ExportOutput(station.GetOutputPort("camera0.rgb_image"), "camera0.rgb_image")
+    builder.ExportOutput(station.GetOutputPort("camera1.rgb_image"), "camera1.rgb_image")
+    builder.ExportOutput(station.GetOutputPort("camera2.rgb_image"), "camera2.rgb_image")
+    builder.ExportOutput(station.GetOutputPort("camera3.rgb_image"), "camera3.rgb_image")
+    builder.ExportOutput(station.GetOutputPort("camera4.rgb_image"), "camera4.rgb_image")
+    builder.ExportOutput(station.GetOutputPort("camera5.rgb_image"), "camera5.rgb_image")
+    builder.ExportOutput(station.GetOutputPort("camera6.rgb_image"), "camera6.rgb_image")
+    builder.ExportOutput(station.GetOutputPort("camera7.rgb_image"), "camera7.rgb_image")
+    builder.ExportOutput(station.GetOutputPort("camera8.rgb_image"), "camera8.rgb_image")
 
     ### Exp. Stuff!
     visualizer = MeshcatVisualizer.AddToBuilder(

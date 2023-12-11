@@ -26,6 +26,7 @@ class SimpleCNN(nn.Module):
         self.fc1 = nn.Linear(128 * 16 * 16, 512)
         self.relu4 = nn.ReLU()
         self.fc2 = nn.Linear(512, num_classes)
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         x = self.conv1(x)
@@ -44,6 +45,7 @@ class SimpleCNN(nn.Module):
         x = self.fc1(x)
         x = self.relu4(x)
         x = self.fc2(x)
+        x = self.sigmoid(x)
 
         return x
 
@@ -114,7 +116,7 @@ if __name__ == "__main__":
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     # Training loop
-    num_epochs = 25
+    num_epochs = 100
 
     for epoch in range(num_epochs):
         train_loss = train(model, train_loader, criterion, optimizer, device)
@@ -126,7 +128,8 @@ if __name__ == "__main__":
               f'Test Accuracy: {100 * test_accuracy:.2f}%')
 
     # Save the trained model
-    torch.save(model.state_dict(), 'saved_model.pth')
+    from datetime import datetime
+    torch.save(model.state_dict(), f'models/saved_model_{datetime.now()}.pth')
 
     # # Test a sample image
     # model.eval()
