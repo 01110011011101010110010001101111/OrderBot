@@ -1,0 +1,45 @@
+<?xml version='1.0'?>
+<sdf xmlns:drake="http://drake.mit.edu" version="1.8">
+  <model name='ketchup'>
+    <link name='ketchup'>
+      <inertial>
+        <pose>5.04104560718483e-05 0.05742742618535454 -0.0009491621927840327 0 0 0</pose>
+        <mass>1.0</mass>
+        <inertia>
+          <ixx>0.0009537253839210788</ixx>
+          <ixy>-1.8998891798765207e-07</ixy>
+          <ixz>4.289067964937703e-08</ixz>
+          <iyy>0.00021013756039599938</iyy>
+          <iyz>9.009270875570937e-06</iyz>
+          <izz>0.0010210444684973091</izz>
+        </inertia>
+      </inertial>
+      <visual name='visual'>
+        <pose>0.0 0.0 0.0 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>ketchup.obj</uri>
+            <scale>0.1 0.1 0.1</scale>
+          </mesh>
+        </geometry>
+      </visual>
+      <collision name='collision'>
+        <pose>0.0 0.0 0.0 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>ketchup.obj</uri>
+            <scale>0.1 0.1 0.1</scale>
+          </mesh>
+        </geometry>
+        <!-- The proximity properties immediately below enable the hydroelastic
+             contact model for this body. To use point contact instead, delete
+             or comment out the <drake:rigid_hydroelastic> element. -->
+        <drake:proximity_properties>
+          <drake:mu_dynamic>0.5</drake:mu_dynamic>
+          <drake:mu_static>0.5</drake:mu_static>
+          <drake:rigid_hydroelastic/>
+        </drake:proximity_properties>
+      </collision>
+    </link>
+  </model>
+</sdf>

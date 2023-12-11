@@ -75,13 +75,14 @@ class PlannerState(Enum):
     PICKING_FROM_Y_BIN = 4
     PICKING_FROM_Z_BIN = 5
 
-tasks = ["chicken", "bread", "chicken", "bread"]
+tasks = ["sauce", "chicken", "bread", "chicken", "bread"]
 so_far = [False, False, False]
 idx = -1
 
 states = {
     "bread": PlannerState.PICKING_FROM_X_BIN,
     "chicken": PlannerState.PICKING_FROM_Y_BIN,
+    "sauce": PlannerState.PICKING_FROM_Z_BIN,
 }
 
 mode_to_str = {states[key]: key for key in states}
@@ -100,9 +101,9 @@ class Planner(LeafSystem):
         self._y_bin_grasp_index = self.DeclareAbstractInputPort(
             "y_bin_grasp", AbstractValue.Make((np.inf, RigidTransform()))
         ).get_index()
-        # self._z_bin_grasp_index = self.DeclareAbstractInputPort(
-        #     "z_bin_grasp", AbstractValue.Make((np.inf, RigidTransform()))
-        # ).get_index()
+        self._z_bin_grasp_index = self.DeclareAbstractInputPort(
+            "z_bin_grasp", AbstractValue.Make((np.inf, RigidTransform()))
+        ).get_index()
         self._wsg_state_index = self.DeclareVectorInputPort("wsg_state", 2).get_index()
 
         self._mode_index = self.DeclareAbstractState(
@@ -279,6 +280,11 @@ class Planner(LeafSystem):
                 cost, X_G["pick"] = self.get_input_port(self._x_bin_grasp_index).Eval(
                     context
                 )
+            elif mode == PlannerState.PICKING_FROM_Z_BIN:
+                print("going for z from z")
+                cost, X_G["pick"] = self.get_input_port(self._z_bin_grasp_index).Eval(
+                    context
+                )
             else:
                 print("going for x...")
                 cost, X_G["pick"] = self.get_input_port(self._x_bin_grasp_index).Eval(
@@ -436,7 +442,7 @@ directives:
     NUM_CHICKEN = 1
     for i in range(NUM_CHICKEN):
         # porting over previous work
-        ranges = {"x": -0.5, "y": -0.5, "z": 0.15}
+        ranges = {"x": 0, "y": -0.6, "z": 0.15}
         name = "ketchup"
         num = i
         '''
@@ -452,7 +458,7 @@ directives:
         model_directives += f"""
 - add_model:
     name: ycb{i}
-    file: package://manipulation/hydro/005_tomato_soup_can.sdf
+    file: file://{full_path}{name}.sdf
     default_free_body_pose:
         base_link_soup:
             translation: [{ranges['x']}, {ranges['y']}, {ranges['z']}]
@@ -526,33 +532,33 @@ directives:
 
     ## trying to add the z bin
 
-    # z_bin_grasp_selector = builder.AddSystem(
-    #     GraspSelector(
-    #         plant,
-    #         plant.GetModelInstanceByName("bin2"),
-    #         camera_body_indices=[
-    #             plant.GetBodyIndices(plant.GetModelInstanceByName("camera6"))[0],
-    #             plant.GetBodyIndices(plant.GetModelInstanceByName("camera7"))[0],
-    #             plant.GetBodyIndices(plant.GetModelInstanceByName("camera8"))[0],
-    #         ],
-    #     )
-    # )
-    # builder.Connect(
-    #     to_point_cloud["camera6"].get_output_port(),
-    #     z_bin_grasp_selector.get_input_port(0),
-    # )
-    # builder.Connect(
-    #     to_point_cloud["camera7"].get_output_port(),
-    #     z_bin_grasp_selector.get_input_port(1),
-    # )
-    # builder.Connect(
-    #     to_point_cloud["camera8"].get_output_port(),
-    #     z_bin_grasp_selector.get_input_port(2),
-    # )
-    # builder.Connect(
-    #     station.GetOutputPort("body_poses"),
-    #     z_bin_grasp_selector.GetInputPort("body_poses"),
-    # )
+    z_bin_grasp_selector = builder.AddSystem(
+        GraspSelector(
+            plant,
+            plant.GetModelInstanceByName("bin2"),
+            camera_body_indices=[
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera6"))[0],
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera7"))[0],
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera8"))[0],
+            ],
+        )
+    )
+    builder.Connect(
+        to_point_cloud["camera6"].get_output_port(),
+        z_bin_grasp_selector.get_input_port(0),
+    )
+    builder.Connect(
+        to_point_cloud["camera7"].get_output_port(),
+        z_bin_grasp_selector.get_input_port(1),
+    )
+    builder.Connect(
+        to_point_cloud["camera8"].get_output_port(),
+        z_bin_grasp_selector.get_input_port(2),
+    )
+    builder.Connect(
+        station.GetOutputPort("body_poses"),
+        z_bin_grasp_selector.GetInputPort("body_poses"),
+    )
 
     planner = builder.AddSystem(Planner(plant))
     builder.Connect(
@@ -566,10 +572,10 @@ directives:
         y_bin_grasp_selector.get_output_port(),
         planner.GetInputPort("y_bin_grasp"),
     )
-    # builder.Connect(
-    #     z_bin_grasp_selector.get_output_port(),
-    #     planner.GetInputPort("z_bin_grasp"),
-    # )
+    builder.Connect(
+        z_bin_grasp_selector.get_output_port(),
+        planner.GetInputPort("z_bin_grasp"),
+    )
     builder.Connect(
         station.GetOutputPort("wsg.state_measured"),
         planner.GetInputPort("wsg_state"),
