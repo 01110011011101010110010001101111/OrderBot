@@ -458,20 +458,25 @@ class Planner(LeafSystem):
         # placing on the mat...
 
         # TODO: we'll likely want it to increase as the sandwich size increases
-        if mode == PlannerState.PICKING_FROM_X_BIN:
-            X_G["place"] = RigidTransform(
-                RollPitchYaw(-np.pi / 2, 0, 0),
-                [-0.01, -0.25, 0.15],
-                # -0.01, -0.25, 
-                # 0, -0.25, -0.015
-            )
-        else:
-            # making the toppings a bit closer since it bounces as is
-            X_G["place"] = RigidTransform(
-                RollPitchYaw(-np.pi / 2, 0, 0),
-                [-0.01, -0.25, 0.12],
-                # 0, -0.25, -0.015
-            )
+        X_G["place"] = RigidTransform(
+            RollPitchYaw(-np.pi / 2, 0, 0),
+            [-0.01, -0.25, 0.10 + 0.02 * idx],
+        )
+
+        # if mode == PlannerState.PICKING_FROM_X_BIN:
+        #     X_G["place"] = RigidTransform(
+        #         RollPitchYaw(-np.pi / 2, 0, 0),
+        #         [-0.01, -0.25, 0.15],
+        #         # -0.01, -0.25, 
+        #         # 0, -0.25, -0.015
+        #     )
+        # else:
+        #     # making the toppings a bit closer since it bounces as is
+        #     X_G["place"] = RigidTransform(
+        #         RollPitchYaw(-np.pi / 2, 0, 0),
+        #         [-0.01, -0.25, 0.12],
+        #         # 0, -0.25, -0.015
+        #     )
  
 
         # if mode == PlannerState.PICKING_FROM_X_BIN:
