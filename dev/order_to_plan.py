@@ -64,8 +64,8 @@ def get_order(food_opts):
     
     # if it is a sandwich, add the bread as well
     if is_salad:
-        plan.insert(len(plan), "lettuce")
-        plan.insert(len(plan), "lettuce")
+        plan.insert(0, "lettuce")
+        plan.insert(0, "lettuce")
     if is_sandwich:
         plan.insert(0, "bread")
         plan.insert(len(plan), "bread")

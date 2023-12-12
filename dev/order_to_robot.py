@@ -58,8 +58,8 @@ from PIL import Image
 from cnn import SimpleCNN
 
 # Load the trained model
-model = SimpleCNN(num_classes=2)
-model_path = 'models/saved_model.pth'
+model = SimpleCNN(num_classes=6)
+model_path = 'models/best_model.pth'
 model.load_state_dict(torch.load(model_path))
 model.eval()
 
@@ -611,8 +611,8 @@ def clutter_clearing_demo():
 directives:
 """
     
-    bin1 = {"x": -0.5, "y": -0.5, "z": -0.05}
-    bin2 = {"x": 0.5, "y": -0.5, "z": -0.05}
+    bin1 = {"x": -0.5, "y": -0.5, "z": 0.1}
+    bin2 = {"x": 0.5, "y": -0.5, "z": 0.1}
     if np.random.uniform() < 0.5:
         chicken_range = bin1
         bread_range = bin2
@@ -624,7 +624,7 @@ directives:
         name = "foam_tomato"
     else:
         name = "foam_chicken"
-    NUM_CHICKEN = 10
+    NUM_CHICKEN = 5
     for i in range(NUM_CHICKEN):
         # porting over previous work
         ranges = chicken_range # {"x": -0.5, "y": -0.5, "z": -0.05}
@@ -635,14 +635,14 @@ directives:
     file: file://{full_path}{name}.sdf
     default_free_body_pose:
         base_link:
-            translation: [{ranges['x'] + np.random.randint(-10, 10)/50}, {ranges['y'] + np.random.randint(-10, 10)/50}, {ranges['z'] + np.random.randint(10)/10}]
+            translation: [{ranges['x'] + np.random.randint(-10, 10)/75}, {ranges['y'] + np.random.randint(-10, 10)/75}, {ranges['z'] + np.random.randint(10)/75}]
 """
 
     if np.random.uniform() < 0.5:
         name = "lettuce"
     else:
         name = "Pound_Cake_OBJ"
-    NUM_BREAD = 10
+    NUM_BREAD = 5
     for num in range(NUM_BREAD):
         ranges = bread_range # {"x": 0.5, "y": -0.5, "z": -0.05}
         model_directives += f"""
@@ -651,7 +651,7 @@ directives:
     file: file://{full_path}{name}.sdf
     default_free_body_pose:
         base_link:
-            translation: [{ranges['x'] + np.random.randint(-10, 10)/50}, {ranges['y'] + np.random.randint(-10, 10)/50}, {ranges['z'] + np.random.randint(10)/10}]
+            translation: [{ranges['x'] + np.random.randint(-10, 10)/75}, {ranges['y'] + np.random.randint(-10, 10)/75}, {ranges['z'] + np.random.randint(10)/75}]
 """
     NUM_KETCHUP = 1
     for i in range(NUM_KETCHUP):

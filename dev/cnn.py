@@ -116,7 +116,7 @@ if __name__ == "__main__":
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     # Training loop
-    num_epochs = 100
+    num_epochs = 30
 
     for epoch in range(num_epochs):
         train_loss = train(model, train_loader, criterion, optimizer, device)
