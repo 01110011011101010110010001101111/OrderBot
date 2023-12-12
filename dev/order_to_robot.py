@@ -626,10 +626,10 @@ directives:
         bread_range = bin1
 
     if np.random.uniform() < 0.5:
-        name = "foam_tomato"
-    else:
         name = "foam_chicken"
-    NUM_CHICKEN = 5
+    else:
+        name = "foam_tomato"
+    NUM_CHICKEN = 10
     for i in range(NUM_CHICKEN):
         # porting over previous work
         ranges = chicken_range # {"x": -0.5, "y": -0.5, "z": -0.05}
@@ -647,7 +647,7 @@ directives:
         name = "lettuce"
     else:
         name = "Pound_Cake_OBJ"
-    NUM_BREAD = 5
+    NUM_BREAD = 10
     for num in range(NUM_BREAD):
         ranges = bread_range # {"x": 0.5, "y": -0.5, "z": -0.05}
         model_directives += f"""
@@ -663,9 +663,9 @@ directives:
         # porting over previous work
         ranges = {"x": 0, "y": -0.6, "z": 0.15}
         if np.random.uniform() < 0.5:
-            name = "ranch"
-        else:
             name = "ketchup"
+        else:
+            name = "ranch"
         num = i
         model_directives += f"""
 - add_model:
