@@ -33,7 +33,7 @@
         </material>
         <geometry>
           <mesh>
-            <uri>file:///Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/ketchup_design.obj</uri>
+            <uri>file:///home/genericp3rson/Downloads/64210/6.4210-Final-Project/objects/ketchup_design.obj</uri>
           </mesh>
         </geometry>
       </visual>

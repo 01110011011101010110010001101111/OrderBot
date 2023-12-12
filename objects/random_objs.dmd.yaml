@@ -1,7 +1,7 @@
 directives:
 - add_model:
    name: foam_chicken
-   file: file:///Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/foam_chicken.sdf
+   file: file:///home/genericp3rson/Downloads/64210/6.4210-Final-Project/objects/foam_chicken.sdf
    default_free_body_pose:
        base_link:
            translation: [-1.0, 0, 0]

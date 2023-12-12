@@ -1,7 +1,7 @@
 
 directives:
 - add_directives:
-    file: file:///Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/two_bins.dmd.yaml
+    file: file:///home/genericp3rson/Downloads/64210/6.4210-Final-Project/objects/two_bins.dmd.yaml
 
 - add_frame:
     name: camera0_origin

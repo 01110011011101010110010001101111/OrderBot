@@ -47,7 +47,7 @@ generator = RandomGenerator(rng.integers(0, 1000))  # this is for c++
 running_as_notebook = True
 
 
-full_path = "/Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/"
+full_path = "/home/genericp3rson/Downloads/64210/6.4210-Final-Project/objects/"
 
 # Another diagram for the objects the robot "knows about": gripper, cameras, bins.  Think of this as the model in the robot's head.
 def make_internal_model():

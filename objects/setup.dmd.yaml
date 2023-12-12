@@ -3,7 +3,7 @@ directives:
     file: package://manipulation/iiwa_and_wsg.dmd.yaml
 - add_model:
     name: bin0
-    file: file://Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/bin.sdf
+    file: file:///home/genericp3rson/Downloads/64210/6.4210-Final-Project/objects/bin.sdf
 - add_weld:
     parent: world
     child: bin0::bin_base
@@ -38,7 +38,7 @@ directives:
         translation: [0, 0, -.5]
 - add_model:
     name: foam_brick
-    file: file://Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/foam_chicken.sdf
+    file: file:///home/genericp3rson/Downloads/64210/6.4210-Final-Project/objects/foam_chicken.sdf
     default_free_body_pose:
         base_link:
             translation: [0, -0.6, 0.2]

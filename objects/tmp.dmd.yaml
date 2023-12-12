@@ -1,5 +1,5 @@
 directives:
 - add_directives:
-    file: file:///Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/two_bins_w_cameras.dmd.yaml
+    file: file:///home/genericp3rson/Downloads/64210/6.4210-Final-Project/objects/two_bins_w_cameras.dmd.yaml
 - add_directives:
     file: package://manipulation/schunk_wsg_50_welded_fingers.dmd.yaml

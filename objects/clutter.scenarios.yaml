@@ -1,7 +1,7 @@
 Clutter: &Clutter
   directives: &ClutterDirectives
   - add_directives:
-      file: file:///Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/two_bins_w_cameras.dmd.yaml
+      file: file:///home/genericp3rson/Downloads/64210/6.4210-Final-Project/objects/two_bins_w_cameras.dmd.yaml
 
   - add_model:
       name: mobile_iiwa
@@ -70,9 +70,9 @@ Mustard:
   - add_directives:
       file: package://manipulation/iiwa_and_wsg.dmd.yaml
   - add_directives:
-      file: file:///Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/two_bins_w_cameras.dmd.yaml
+      file: file:///home/genericp3rson/Downloads/64210/6.4210-Final-Project/objects/two_bins_w_cameras.dmd.yaml
   - add_directives:
-      file: file:///Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/random_objs.dmd.yaml
+      file: file:///home/genericp3rson/Downloads/64210/6.4210-Final-Project/objects/random_objs.dmd.yaml
 
 
   - add_model:

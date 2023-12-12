@@ -72,7 +72,7 @@ transform = transforms.Compose([
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-full_path = "/Users/paromitadatta/Desktop/64210/6.4210-Final-Project/objects/"
+full_path = "/home/genericp3rson/Downloads/64210/6.4210-Final-Project/objects/"
 diagram = None
 context = None
 
