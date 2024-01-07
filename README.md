@@ -6,3 +6,11 @@ With this project, I got to cover a ton of ground, exploring natural language pr
 The stack currently uses [spaCy](https://spacy.io/), [PyTorch](https://pytorch.org/), and [PyDrake](https://drake.mit.edu/).
 
 I will clean up this repository, but most of the code currently is in `dev/order_to_robot.py`. Feel free to reach out for the most up-to-date CNN model as well!
+
+## Quick Start
+
+```
+git clone https://github.com/GenericP3rson/OrderBot.git
+pip3 install -r requirements.txt
+python3 dev/order_to_robot.py
+```
