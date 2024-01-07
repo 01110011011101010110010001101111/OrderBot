@@ -11,6 +11,7 @@ I will clean up this repository, but most of the code currently is in `dev/order
 
 ```
 git clone https://github.com/GenericP3rson/OrderBot.git
+cd OrderBot
 pip3 install -r requirements.txt
 python3 dev/order_to_robot.py
 ```
